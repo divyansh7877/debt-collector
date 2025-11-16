@@ -53,6 +53,31 @@ def list_entities(
     return results
 
 
+@router.get("/analytics", response_model=schemas.AnalyticsResponse)
+def analytics(db: Session = Depends(get_db)):
+    """Get analytics data for all users."""
+    users = crud.list_users(db)
+    counts = crud.compute_counts_by_status(users)
+    avg_overdue = crud.compute_avg_overdue_days(users)
+    return schemas.AnalyticsResponse(
+        counts_by_status=counts,
+        avg_overdue_days=avg_overdue,
+        total_users=len(users),
+    )
+
+
+@router.post("/group", response_model=schemas.GroupRead)
+def create_group(
+    body: schemas.GroupCreate,
+    db: Session = Depends(get_db),
+):
+    try:
+        group = crud.create_group_with_users(db, name=body.name, user_ids=body.user_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return group
+
+
 @router.get("/{id}")
 def get_entity(
     id: int,
@@ -81,18 +106,6 @@ def get_entity(
     raise HTTPException(status_code=404, detail="User or group not found")
 
 
-@router.post("/group", response_model=schemas.GroupRead)
-def create_group(
-    body: schemas.GroupCreate,
-    db: Session = Depends(get_db),
-):
-    try:
-        group = crud.create_group_with_users(db, name=body.name, user_ids=body.user_ids)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    return group
-
-
 @router.patch("/{id}/status")
 def update_status(
     id: int,
@@ -114,15 +127,3 @@ def update_status(
         return {"type": "group", "data": schemas.GroupRead.from_orm(updated)}
 
     raise HTTPException(status_code=404, detail="User or group not found")
-
-
-@router.get("/analytics", response_model=schemas.AnalyticsResponse)
-def analytics(db: Session = Depends(get_db)):
-    users = crud.list_users(db)
-    counts = crud.compute_counts_by_status(users)
-    avg_overdue = crud.compute_avg_overdue_days(users)
-    return schemas.AnalyticsResponse(
-        counts_by_status=counts,
-        avg_overdue_days=avg_overdue,
-        total_users=len(users),
-    )

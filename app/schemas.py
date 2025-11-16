@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 StatusLiteral = Literal["pending", "ongoing", "finished"]
 OwnerTypeLiteral = Literal["user", "group"]
+BlockTypeLiteral = Literal["action", "decision"]
 
 
 # ---- User & Group Schemas ----
@@ -60,10 +61,38 @@ class GroupRead(GroupBase):
 # ---- Strategy Schemas ----
 
 
+class ContactMethodDetail(BaseModel):
+    """Details for a specific contact method."""
+    method: str  # "email", "phone", "sms"
+    value: str  # actual email/phone number
+    label: Optional[str] = None  # "Primary Phone", "Work Email", etc.
+    is_preferred: bool = False
+
+
+class DecisionOutput(BaseModel):
+    """Defines a possible output path from a decision block."""
+    condition: str  # Description of when this output is chosen
+    next_timing: Optional[str] = None  # Which timeline column to jump to
+    action: Optional[str] = None  # What action to take
+
+
 class StrategyBlock(BaseModel):
-    source: str
-    tone: str
-    content: str
+    """Base strategy block - can be action or decision type."""
+    block_type: BlockTypeLiteral = "action"  # "action" or "decision"
+    
+    # Action block fields
+    source: Optional[str] = None  # "email", "sms", "call"
+    tone: Optional[str] = None  # "friendly", "neutral", "firm", "escalation"
+    content: Optional[str] = None  # Message content
+    
+    # Enhanced execution details for action blocks
+    contact_method_detail: Optional[str] = None  # Which specific contact to use
+    preferred_contact: Optional[str] = None  # User's preferred method
+    
+    # Decision block fields
+    decision_prompt: Optional[str] = None  # AI prompt for decision logic
+    decision_sources: Optional[List[str]] = None  # Data sources to consider
+    decision_outputs: Optional[List[DecisionOutput]] = None  # Possible outcomes
 
 
 class StrategyTimelineColumn(BaseModel):

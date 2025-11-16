@@ -31,9 +31,6 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
     This keeps the prototype functional without external API keys.
     """
     amount_owed = details.get("amount_owed")
-    tone_first = "friendly"
-    tone_second = "firm"
-    tone_third = "escalation"
 
     return [
         {
@@ -41,7 +38,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "blocks": [
                 {
                     "source": "email",
-                    "tone": tone_first,
+                    "tone": "friendly",
                     "content": "Gentle reminder about your outstanding balance.",
                 }
             ],
@@ -51,7 +48,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "blocks": [
                 {
                     "source": "sms",
-                    "tone": tone_second,
+                    "tone": "neutral",
                     "content": "Follow-up on payment; please contact us to arrange a plan.",
                 }
             ],
@@ -60,9 +57,58 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "timing": "Day 15-30",
             "blocks": [
                 {
+                    "block_type": "action",
+                    "source": "email",
+                    "tone": "firm",
+                    "content": "Important: Payment is now overdue. Please settle your account.",
+                    "preferred_contact": "email",
+                },
+                {
+                    "block_type": "decision",
+                    "decision_prompt": "Check if user has made any partial payment or contacted us",
+                    "decision_sources": ["payment_history", "communication_log"],
+                    "decision_outputs": [
+                        {
+                            "condition": "If partial payment received",
+                            "next_timing": "Day 31-50",
+                            "action": "Send thank you and payment plan",
+                        },
+                        {
+                            "condition": "If no response",
+                            "next_timing": "Day 31-50",
+                            "action": "Escalate to phone call",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "timing": "Day 31-50",
+            "blocks": [
+                {
                     "source": "call",
-                    "tone": tone_third,
-                    "content": "Final reminder; account may be escalated if unpaid.",
+                    "tone": "firm",
+                    "content": "Direct call to discuss payment options and resolve outstanding balance.",
+                }
+            ],
+        },
+        {
+            "timing": "Day 51-90",
+            "blocks": [
+                {
+                    "source": "email",
+                    "tone": "escalation",
+                    "content": "Final notice: Account will be escalated to collections if not resolved.",
+                }
+            ],
+        },
+        {
+            "timing": "Day 90+",
+            "blocks": [
+                {
+                    "source": "call",
+                    "tone": "escalation",
+                    "content": "Legal action may be pursued. Immediate payment required.",
                 }
             ],
         },
