@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -9,7 +9,13 @@ import {
 } from '@mui/material';
 
 const PromptDialog = ({ open, initialPrompt, onClose, onSubmit }) => {
-  const [prompt, setPrompt] = useState(initialPrompt);
+  const [prompt, setPrompt] = useState(initialPrompt || '');
+
+  useEffect(() => {
+    if (open) {
+      setPrompt(initialPrompt || '');
+    }
+  }, [initialPrompt, open]);
 
   const handleSubmit = () => {
     onSubmit(prompt);

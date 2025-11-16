@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 StatusLiteral = Literal["pending", "ongoing", "finished"]
@@ -33,8 +33,8 @@ class UserUpdateStatus(BaseModel):
 class UserRead(UserBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    # Support both Pydantic v1 and v2
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GroupBase(BaseModel):
@@ -54,8 +54,8 @@ class GroupUpdateStatus(BaseModel):
 class GroupRead(GroupBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    # Support both Pydantic v1 and v2
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---- Strategy Schemas ----
@@ -114,8 +114,8 @@ class StrategyRead(StrategyBase):
     id: int
     executed: bool
 
-    class Config:
-        orm_mode = True
+    # Support both Pydantic v1 and v2
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StrategyExecuteResponse(BaseModel):

@@ -4,7 +4,8 @@ import os
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
@@ -25,21 +26,111 @@ def _get_owner(db: Session, owner_id: int, owner_type: str) -> models.User | mod
     return obj
 
 
+def _get_contact_value(contact_methods: List[Dict[str, Any]], method_candidates: List[str]) -> Optional[str]:
+    """Return the preferred contact detail matching the provided method candidates."""
+    if not contact_methods:
+        return None
+    normalized = [m.lower() for m in method_candidates]
+    preferred = next(
+        (
+            cm
+            for cm in contact_methods
+            if cm.get("method", "").lower() in normalized and cm.get("is_preferred")
+        ),
+        None,
+    )
+    if preferred:
+        return preferred.get("value")
+
+    fallback = next(
+        (cm for cm in contact_methods if cm.get("method", "").lower() in normalized),
+        None,
+    )
+    if fallback:
+        return fallback.get("value")
+    return None
+
+
+def _apply_block_defaults(
+    block: Dict[str, Any],
+    contact_methods: List[Dict[str, Any]],
+    preferred_contact: Optional[str],
+) -> Dict[str, Any]:
+    normalized = dict(block or {})
+    normalized["block_type"] = normalized.get("block_type") or "action"
+
+    if normalized["block_type"] == "decision":
+        normalized.setdefault("decision_sources", [])
+        normalized.setdefault("decision_outputs", [])
+        return normalized
+
+    source = (normalized.get("source") or "").lower()
+    contact_value: Optional[str] = None
+    if source == "email":
+        contact_value = _get_contact_value(contact_methods, ["email"])
+    elif source in {"call", "phone"}:
+        contact_value = _get_contact_value(contact_methods, ["phone"])
+    elif source == "sms":
+        contact_value = _get_contact_value(contact_methods, ["sms", "phone"])
+
+    if contact_value and not normalized.get("contact_method_detail"):
+        normalized["contact_method_detail"] = contact_value
+
+    if preferred_contact and not normalized.get("preferred_contact"):
+        normalized["preferred_contact"] = preferred_contact
+
+    return normalized
+
+
+def _apply_contact_metadata(timeline: List[Dict[str, Any]], details: Dict[str, Any]) -> List[Dict[str, Any]]:
+    contact_methods = details.get("contact_methods") or []
+    preferred_contact = details.get("preferred_contact")
+    enriched: List[Dict[str, Any]] = []
+    for column in timeline or []:
+        enriched.append(
+            {
+                "timing": column.get("timing") or "Unscheduled",
+                "blocks": [
+                    _apply_block_defaults(block, contact_methods, preferred_contact)
+                    for block in column.get("blocks", [])
+                ],
+            }
+        )
+    return enriched
+
+
+def _validate_timeline_schema(timeline: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    try:
+        columns = [schemas.StrategyTimelineColumn(**column) for column in timeline]
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "Invalid strategy timeline", "details": exc.errors()},
+        )
+    return [column.dict() for column in columns]
+
+
+def _prepare_timeline(timeline: List[Dict[str, Any]], details: Dict[str, Any]) -> List[Dict[str, Any]]:
+    enriched = _apply_contact_metadata(timeline, details)
+    return _validate_timeline_schema(enriched)
+
+
 def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[str, Any]]:
-    """Fallback deterministic strategy timeline used when AI is not available.
-
-    This keeps the prototype functional without external API keys.
-    """
+    """Fallback deterministic strategy timeline used when AI is not available."""
     amount_owed = details.get("amount_owed")
+    amount_phrase = (
+        f"₹{amount_owed:,}" if isinstance(amount_owed, (int, float)) else "your outstanding balance"
+    )
 
-    return [
+    base_timeline = [
         {
             "timing": "Day 1-7",
             "blocks": [
                 {
+                    "block_type": "action",
                     "source": "email",
                     "tone": "friendly",
-                    "content": "Gentle reminder about your outstanding balance.",
+                    "content": f"Gentle reminder about {amount_phrase}.",
                 }
             ],
         },
@@ -47,6 +138,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "timing": "Day 8-14",
             "blocks": [
                 {
+                    "block_type": "action",
                     "source": "sms",
                     "tone": "neutral",
                     "content": "Follow-up on payment; please contact us to arrange a plan.",
@@ -61,7 +153,6 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
                     "source": "email",
                     "tone": "firm",
                     "content": "Important: Payment is now overdue. Please settle your account.",
-                    "preferred_contact": "email",
                 },
                 {
                     "block_type": "decision",
@@ -86,6 +177,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "timing": "Day 31-50",
             "blocks": [
                 {
+                    "block_type": "action",
                     "source": "call",
                     "tone": "firm",
                     "content": "Direct call to discuss payment options and resolve outstanding balance.",
@@ -96,6 +188,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "timing": "Day 51-90",
             "blocks": [
                 {
+                    "block_type": "action",
                     "source": "email",
                     "tone": "escalation",
                     "content": "Final notice: Account will be escalated to collections if not resolved.",
@@ -106,6 +199,7 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             "timing": "Day 90+",
             "blocks": [
                 {
+                    "block_type": "action",
                     "source": "call",
                     "tone": "escalation",
                     "content": "Legal action may be pursued. Immediate payment required.",
@@ -113,6 +207,8 @@ def _build_default_timeline(details: Dict[str, Any], prompt: str) -> List[Dict[s
             ],
         },
     ]
+
+    return _prepare_timeline(base_timeline, details)
 
 
 async def _generate_timeline_with_ai(
@@ -177,9 +273,13 @@ async def _generate_timeline_with_ai(
         parsed = json.loads(content)
         timeline = parsed.get("timeline")
         if isinstance(timeline, list):
-            return timeline
+            try:
+                return _prepare_timeline(timeline, details)
+            except HTTPException:
+                # Invalid structure from AI; fall back
+                return _build_default_timeline(details, prompt)
     except Exception:
-        pass
+        return _build_default_timeline(details, prompt)
 
     return _build_default_timeline(details, prompt)
 
@@ -231,7 +331,7 @@ async def create_or_update_strategy(
 @router.post("/{owner_id}/ai-generate", response_model=schemas.StrategyRead)
 async def ai_generate_strategy(
     owner_id: int,
-    body: schemas.AIGenerateRequest,
+    body: schemas.AIGenerateRequest = Body(default_factory=schemas.AIGenerateRequest),
     owner_type: schemas.OwnerTypeLiteral = Query("user"),
     db: Session = Depends(get_db),
 ):
@@ -240,11 +340,9 @@ async def ai_generate_strategy(
     details: Dict[str, Any]
     if isinstance(owner, models.User):
         details = owner.details or {}
-        name = owner.name
     else:
         # For groups, aggregate basic info
         details = {"group_name": owner.name, "members": len(owner.users)}
-        name = owner.name
 
     prompt = body.prompt or "Create balanced collection strategy"
 

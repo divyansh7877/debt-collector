@@ -3,12 +3,53 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from . import crud, models, schemas
 from .database import get_db
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _pydantic_to_dict(obj):
+    """Convert Pydantic model to dict, handling both v1 and v2."""
+    if obj is None:
+        return None
+    if hasattr(obj, 'dict'):
+        return obj.dict()
+    if hasattr(obj, 'model_dump'):
+        return obj.model_dump()
+    return dict(obj)
+
+
+def _pydantic_from_orm(schema_class, orm_obj):
+    """Convert ORM object to Pydantic model, handling both v1 and v2."""
+    if orm_obj is None:
+        return None
+    # Try Pydantic v2 first (model_validate)
+    if hasattr(schema_class, 'model_validate'):
+        try:
+            return schema_class.model_validate(orm_obj)
+        except Exception:
+            # Fall back to from_orm if model_validate fails
+            pass
+    # Fall back to Pydantic v1 (from_orm)
+    if hasattr(schema_class, 'from_orm'):
+        return schema_class.from_orm(orm_obj)
+    # Last resort: manual conversion
+    try:
+        # Try to get field names from Pydantic v2
+        if hasattr(schema_class, 'model_fields'):
+            field_names = schema_class.model_fields.keys()
+        # Or from Pydantic v1
+        elif hasattr(schema_class, '__fields__'):
+            field_names = schema_class.__fields__.keys()
+        else:
+            # Guess from ORM object attributes
+            field_names = [k for k in dir(orm_obj) if not k.startswith('_')]
+        return schema_class(**{k: getattr(orm_obj, k, None) for k in field_names if hasattr(orm_obj, k)})
+    except Exception as e:
+        raise ValueError(f"Failed to convert ORM object to {schema_class.__name__}: {str(e)}")
 
 
 @router.get("/", response_model=List[schemas.EntitySummary])
@@ -93,21 +134,33 @@ def get_entity(
 
     Tries user first, then group. Returns a generic payload with `type`.
     """
-    user = crud.get_user(db, id)
+    # Load user with group relationship
+    user = db.query(models.User).options(joinedload(models.User.group)).filter(models.User.id == id).first()
     if user:
-        return {
-            "type": "user",
-            "data": schemas.UserRead.from_orm(user),
-            "group": schemas.GroupRead.from_orm(user.group) if user.group else None,
-        }
+        try:
+            user_read = _pydantic_from_orm(schemas.UserRead, user)
+            group_read = _pydantic_from_orm(schemas.GroupRead, user.group) if user.group else None
+            return {
+                "type": "user",
+                "data": _pydantic_to_dict(user_read),
+                "group": _pydantic_to_dict(group_read),
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error serializing user: {str(e)}")
 
-    group = crud.get_group(db, id)
+    # Load group with users relationship
+    group = db.query(models.Group).options(joinedload(models.Group.users)).filter(models.Group.id == id).first()
     if group:
-        return {
-            "type": "group",
-            "data": schemas.GroupRead.from_orm(group),
-            "members": [schemas.UserRead.from_orm(u) for u in group.users],
-        }
+        try:
+            group_read = _pydantic_from_orm(schemas.GroupRead, group)
+            members_read = [_pydantic_from_orm(schemas.UserRead, u) for u in group.users]
+            return {
+                "type": "group",
+                "data": _pydantic_to_dict(group_read),
+                "members": [_pydantic_to_dict(m) for m in members_read],
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error serializing group: {str(e)}")
 
     raise HTTPException(status_code=404, detail="User or group not found")
 
@@ -125,11 +178,13 @@ def update_status(
     user = crud.get_user(db, id)
     if user:
         updated = crud.update_user_status(db, user, status=body.status)
-        return {"type": "user", "data": schemas.UserRead.from_orm(updated)}
+        updated_read = _pydantic_from_orm(schemas.UserRead, updated)
+        return {"type": "user", "data": _pydantic_to_dict(updated_read)}
 
     group = crud.get_group(db, id)
     if group:
         updated = crud.update_group_status(db, group, status=body.status)
-        return {"type": "group", "data": schemas.GroupRead.from_orm(updated)}
+        updated_read = _pydantic_from_orm(schemas.GroupRead, updated)
+        return {"type": "group", "data": _pydantic_to_dict(updated_read)}
 
     raise HTTPException(status_code=404, detail="User or group not found")

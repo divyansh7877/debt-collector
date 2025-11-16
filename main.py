@@ -15,9 +15,11 @@ models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Collections Strategy Backend", version="0.1.0")
 
 # CORS: allow all origins for prototype; tighten for production
+# Note: Cannot use allow_origins=["*"] with allow_credentials=True
+# So we either remove credentials or specify exact origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

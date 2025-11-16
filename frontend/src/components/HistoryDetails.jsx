@@ -45,9 +45,16 @@ const HistoryDetails = () => {
     (async () => {
       try {
         const res = await getUser(selectedId);
-        setData(res.data);
+        console.log('API Response:', res); // Debug log
+        if (res && res.data) {
+          setData(res.data);
+        } else {
+          console.error('Invalid response structure:', res);
+          setData(null);
+        }
       } catch (e) {
         console.error('Failed to fetch entity details', e);
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -110,6 +117,22 @@ const HistoryDetails = () => {
     return days !== null && days > 0;
   };
 
+  // Prepare payment timeline chart data (must be defined before any early returns)
+  const timelineData = useMemo(() => {
+    const paymentHistory = data?.data?.details?.payment_history || [];
+    if (!paymentHistory.length) return [];
+
+    return paymentHistory
+      .map((p) => ({
+        date: p.date,
+        amount: p.amount,
+        cumulative: paymentHistory
+          .filter((x) => x.date <= p.date)
+          .reduce((sum, x) => sum + (x.amount || 0), 0),
+      }))
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }, [data]);
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -127,7 +150,32 @@ const HistoryDetails = () => {
     );
   }
 
+  // Validate response structure
+  if (!data.type || !data.data) {
+    console.error('Invalid data structure:', data);
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">Invalid data structure received</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Expected: {'{type, data, group?, members?}'}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          Received: {JSON.stringify(data, null, 2)}
+        </Typography>
+      </Box>
+    );
+  }
+
   const { type, data: entity, group, members } = data;
+
+  if (!entity) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">Entity data is missing</Typography>
+      </Box>
+    );
+  }
+  
   const details = entity.details || {};
   const historyText = details.history_text;
   const paymentHistory = details.payment_history || [];
@@ -140,20 +188,6 @@ const HistoryDetails = () => {
 
   const overdueDays = calculateOverdueDays(dueDate);
   const collectionProgress = amountOwed > 0 ? (totalPaid / amountOwed) * 100 : 0;
-
-  // Prepare payment timeline chart data
-  const timelineData = useMemo(() => {
-    if (!paymentHistory.length) return [];
-    return paymentHistory
-      .map((p) => ({
-        date: p.date,
-        amount: p.amount,
-        cumulative: paymentHistory
-          .filter((x) => x.date <= p.date)
-          .reduce((sum, x) => sum + (x.amount || 0), 0),
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [paymentHistory]);
 
   return (
     <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
