@@ -156,3 +156,7 @@ class AnalyticsResponse(BaseModel):
     counts_by_status: Dict[StatusLiteral, int]
     avg_overdue_days: float
     total_users: int
+    total_amount_owed: float = 0.0
+    total_amount_collected: float = 0.0
+    total_remaining: float = 0.0
+    timeline_data: List[Dict[str, Any]] = Field(default_factory=list)  # Payment timeline

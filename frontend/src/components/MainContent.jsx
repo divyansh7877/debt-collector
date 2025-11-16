@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Tab, Tabs } from '@mui/material';
 
+import Dashboard from './Dashboard.jsx';
 import HistoryDetails from './HistoryDetails.jsx';
 import StrategyPlanning from './StrategyPlanning.jsx';
 import { fetchStrategy } from '../features/strategies/strategiesSlice.js';
@@ -9,7 +10,7 @@ import { fetchStrategy } from '../features/strategies/strategiesSlice.js';
 const TabPanel = ({ children, value, index }) => {
   return (
     <div role="tabpanel" hidden={value !== index} style={{ height: '100%' }}>
-      {value === index && <Box sx={{ p: 2, height: '100%' }}>{children}</Box>}
+      {value === index && <Box sx={{ height: '100%', overflow: 'auto' }}>{children}</Box>}
     </div>
   );
 };
@@ -25,12 +26,9 @@ const MainContent = () => {
     }
   }, [dispatch, selectedId, selectedType]);
 
+  // Show Dashboard when no user is selected
   if (!selectedId) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h6">Select a user from the left to begin.</Typography>
-      </Box>
-    );
+    return <Dashboard />;
   }
 
   return (
@@ -39,7 +37,7 @@ const MainContent = () => {
         <Tab label="History & Details" />
         <Tab label="Strategy Planning" />
       </Tabs>
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <TabPanel value={tab} index={0}>
           <HistoryDetails />
         </TabPanel>

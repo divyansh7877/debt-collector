@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
+  Alert,
   Box,
   Button,
+  Divider,
   Drawer,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -23,6 +26,8 @@ import {
   updateStrategy as updateStrategyThunk,
 } from '../features/strategies/strategiesSlice.js';
 import { fetchUsers, fetchAnalytics } from '../features/users/usersSlice.js';
+import { getUser } from '../api/services.js';
+import { Delete } from '@mui/icons-material';
 
 const DEFAULT_COLUMNS = ['Day 1-7', 'Day 8-14', 'Day 15-30', 'Day 31-50', 'Day 51-90', 'Day 90+'];
 
@@ -36,9 +41,20 @@ const COLUMN_COLORS = [
   'rgba(244, 67, 54, 0.15)',   // Red - Day 90+
 ];
 
+const normalizeTimeline = (timeline = []) =>
+  timeline.map((col) => ({
+    timing: col.timing,
+    blocks: (col.blocks || []).map((block) => ({
+      block_type: block.block_type || 'action',
+      ...block,
+    })),
+  }));
+
+const createEmptyTimeline = () => DEFAULT_COLUMNS.map((timing) => ({ timing, blocks: [] }));
+
 const StrategyPlanning = () => {
   const dispatch = useDispatch();
-  const { selectedId, selectedType, users } = useSelector((state) => state.users);
+  const { selectedId, selectedType } = useSelector((state) => state.users);
   const strategyState = useSelector((state) => state.strategies.strategies);
 
   const [timeline, setTimeline] = useState([]);
@@ -47,36 +63,65 @@ const StrategyPlanning = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState(null); // { colIndex, blockIndex }
   const [userDetails, setUserDetails] = useState(null);
+  const [validationError, setValidationError] = useState(null);
 
   const currentStrategy = strategyState[selectedId];
 
-  useEffect(() => {
-    if (currentStrategy) {
-      setTimeline(currentStrategy.timeline || []);
-      setPrompt(currentStrategy.prompt || 'Create balanced collection strategy');
-    } else {
-      // Initialize with empty columns
-      setTimeline(DEFAULT_COLUMNS.map((timing) => ({ timing, blocks: [] })));
-      setPrompt('Create balanced collection strategy');
+  const initialTimeline = useMemo(() => {
+    if (currentStrategy && currentStrategy.timeline) {
+      return normalizeTimeline(currentStrategy.timeline || []);
     }
+    return createEmptyTimeline();
+  }, [currentStrategy, selectedId]);
+
+  const initialPromptValue = useMemo(
+    () => currentStrategy?.prompt || 'Create balanced collection strategy',
+    [currentStrategy, selectedId],
+  );
+
+  useEffect(() => {
+    setTimeline(initialTimeline);
+    setPrompt(initialPromptValue);
     setSelectedBlock(null);
     setDrawerOpen(false);
-  }, [currentStrategy, selectedId]);
+    setValidationError(null);
+  }, [initialTimeline, initialPromptValue, selectedId]);
 
   // Fetch user details for contact methods
   useEffect(() => {
-    if (selectedId && users) {
-      const user = users.find((u) => u.id === selectedId);
-      if (user) {
-        // Fetch full user details from API
-        import('../api/services.js').then(({ getUser }) => {
-          getUser(selectedId).then((res) => {
-            setUserDetails(res.data?.data?.details || {});
-          });
-        });
-      }
+    if (!selectedId) {
+      setUserDetails(null);
+      return;
     }
-  }, [selectedId, users]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getUser(selectedId);
+        if (!cancelled) {
+          const details = res.data?.data?.details || {};
+          // Ensure contact_methods is an array
+          if (details.contact_methods && !Array.isArray(details.contact_methods)) {
+            details.contact_methods = [];
+          }
+          setUserDetails(details);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to fetch user details', err);
+          setUserDetails({});
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    const timelinesEqual =
+      JSON.stringify(timeline) === JSON.stringify(initialTimeline);
+    return !(timelinesEqual && prompt === initialPromptValue);
+  }, [timeline, initialTimeline, prompt, initialPromptValue]);
 
   if (!selectedId || selectedType !== 'user') {
     return (
@@ -91,10 +136,12 @@ const StrategyPlanning = () => {
     const sourceColIndex = parseInt(source.droppableId.replace('col-', ''), 10);
     const destColIndex = parseInt(destination.droppableId.replace('col-', ''), 10);
 
-    const newTimeline = timeline.map((col) => ({ ...col, blocks: [...col.blocks] }));
-    const [moved] = newTimeline[sourceColIndex].blocks.splice(source.index, 1);
-    newTimeline[destColIndex].blocks.splice(destination.index, 0, moved);
-    setTimeline(newTimeline);
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      const [moved] = newTimeline[sourceColIndex].blocks.splice(source.index, 1);
+      newTimeline[destColIndex].blocks.splice(destination.index, 0, moved);
+      return newTimeline;
+    });
   };
 
   const handleBlockClick = (colIndex, blockIndex) => {
@@ -105,35 +152,184 @@ const StrategyPlanning = () => {
   const handleBlockChange = (field, value) => {
     if (!selectedBlock) return;
     const { colIndex, blockIndex } = selectedBlock;
-    const newTimeline = timeline.map((col) => ({ ...col, blocks: [...col.blocks] }));
-    newTimeline[colIndex].blocks[blockIndex] = {
-      ...newTimeline[colIndex].blocks[blockIndex],
-      [field]: value,
-    };
-    setTimeline(newTimeline);
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      newTimeline[colIndex].blocks[blockIndex] = {
+        ...newTimeline[colIndex].blocks[blockIndex],
+        [field]: value,
+      };
+      return newTimeline;
+    });
+    setValidationError(null);
   };
 
   const handleAddBlock = (colIndex, blockType = 'action') => {
-    const newTimeline = timeline.map((col) => ({ ...col, blocks: [...col.blocks] }));
-    if (blockType === 'decision') {
-      newTimeline[colIndex].blocks.push({
-        block_type: 'decision',
-        decision_prompt: 'Enter decision logic',
-        decision_sources: [],
-        decision_outputs: [],
+    let newBlockIndex = 0;
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      if (blockType === 'decision') {
+        newTimeline[colIndex].blocks.push({
+          block_type: 'decision',
+          decision_prompt: 'Enter decision logic',
+          decision_sources: [],
+          decision_outputs: [],
+        });
+      } else {
+        // For action blocks, auto-populate preferred contact if available
+        const newBlock = {
+          block_type: 'action',
+          source: 'email',
+          tone: 'friendly',
+          content: 'New reminder',
+        };
+        
+        // Auto-populate preferred contact method detail if available
+        if (userDetails?.contact_methods && Array.isArray(userDetails.contact_methods)) {
+          const preferredMethod = userDetails.contact_methods.find((cm) => cm.is_preferred);
+          if (preferredMethod) {
+            newBlock.contact_method_detail = preferredMethod.value;
+            // Also set source based on preferred method type
+            if (preferredMethod.method === 'email') {
+              newBlock.source = 'email';
+            } else if (preferredMethod.method === 'phone') {
+              newBlock.source = 'call';
+            }
+          }
+        }
+        
+        // Set preferred contact type
+        if (userDetails?.preferred_contact) {
+          newBlock.preferred_contact = userDetails.preferred_contact;
+        }
+        
+        newTimeline[colIndex].blocks.push(newBlock);
+      }
+      newBlockIndex = newTimeline[colIndex].blocks.length - 1;
+      return newTimeline;
+    });
+    setValidationError(null);
+    // Open drawer to edit the new block
+    setSelectedBlock({ colIndex, blockIndex: newBlockIndex });
+    setDrawerOpen(true);
+  };
+
+  const handleAddDecisionOutput = () => {
+    if (!selectedBlock) return;
+    const { colIndex, blockIndex } = selectedBlock;
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      const block = { ...newTimeline[colIndex].blocks[blockIndex] };
+      const outputs = block.decision_outputs ? [...block.decision_outputs] : [];
+      const defaultTiming = newTimeline[colIndex]?.timing || DEFAULT_COLUMNS[0];
+      outputs.push({
+        condition: '',
+        next_timing: defaultTiming,
+        action: '',
       });
-    } else {
-      newTimeline[colIndex].blocks.push({
-        block_type: 'action',
-        source: 'email',
-        tone: 'friendly',
-        content: 'New reminder',
-      });
+      block.decision_outputs = outputs;
+      newTimeline[colIndex].blocks[blockIndex] = block;
+      return newTimeline;
+    });
+    setValidationError(null);
+  };
+
+  const handleResetChanges = () => {
+    setTimeline(initialTimeline);
+    setPrompt(initialPromptValue);
+    setSelectedBlock(null);
+    setDrawerOpen(false);
+    setValidationError(null);
+  };
+
+  const handleDecisionOutputChange = (outputIndex, field, value) => {
+    if (!selectedBlock) return;
+    const { colIndex, blockIndex } = selectedBlock;
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      const block = { ...newTimeline[colIndex].blocks[blockIndex] };
+      const outputs = block.decision_outputs ? [...block.decision_outputs] : [];
+      outputs[outputIndex] = {
+        ...outputs[outputIndex],
+        [field]: value,
+      };
+      block.decision_outputs = outputs;
+      newTimeline[colIndex].blocks[blockIndex] = block;
+      return newTimeline;
+    });
+    setValidationError(null);
+  };
+
+  const handleRemoveDecisionOutput = (outputIndex) => {
+    if (!selectedBlock) return;
+    const { colIndex, blockIndex } = selectedBlock;
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      const block = { ...newTimeline[colIndex].blocks[blockIndex] };
+      const outputs = block.decision_outputs ? [...block.decision_outputs] : [];
+      outputs.splice(outputIndex, 1);
+      block.decision_outputs = outputs;
+      newTimeline[colIndex].blocks[blockIndex] = block;
+      return newTimeline;
+    });
+    setValidationError(null);
+  };
+
+  const handleRemoveBlock = () => {
+    if (!selectedBlock) return;
+    const { colIndex, blockIndex } = selectedBlock;
+    setTimeline((prev) => {
+      const newTimeline = prev.map((col) => ({ ...col, blocks: [...col.blocks] }));
+      newTimeline[colIndex].blocks.splice(blockIndex, 1);
+      return newTimeline;
+    });
+    setSelectedBlock(null);
+    setDrawerOpen(false);
+    setValidationError(null);
+  };
+
+  const validateTimeline = (tl) => {
+    for (const col of tl) {
+      for (const block of col.blocks) {
+        const type = block.block_type || 'action';
+        if (type === 'decision') {
+          if (!block.decision_prompt || !block.decision_prompt.trim()) {
+            return `Decision block in ${col.timing} needs a prompt.`;
+          }
+          const outputs = block.decision_outputs || [];
+          if (!outputs.length) {
+            return `Decision block in ${col.timing} needs at least one outcome.`;
+          }
+          for (const output of outputs) {
+            if (!output?.condition || !output.condition.trim()) {
+              return 'All decision outcomes need a condition.';
+            }
+            if (!output?.next_timing || !output.next_timing.trim()) {
+              return 'All decision outcomes need a next timing.';
+            }
+          }
+        } else {
+          if (!block.source || !block.source.trim()) {
+            return `Action block in ${col.timing} needs a source.`;
+          }
+          if (!block.tone || !block.tone.trim()) {
+            return `Action block in ${col.timing} needs a tone.`;
+          }
+          if (!block.content || !block.content.trim()) {
+            return `Action block in ${col.timing} needs content.`;
+          }
+        }
+      }
     }
-    setTimeline(newTimeline);
+    return null;
   };
 
   const handleSave = () => {
+    const error = validateTimeline(timeline);
+    if (error) {
+      setValidationError(error);
+      return;
+    }
+    setValidationError(null);
     dispatch(
       updateStrategyThunk({
         userId: selectedId,
@@ -162,7 +358,11 @@ const StrategyPlanning = () => {
 
   return (
     <Box sx={{ display: 'flex', height: '100%', flexDirection: 'column' }}>
-      <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1}
+        sx={{ mb: 2, alignItems: { xs: 'stretch', sm: 'center' } }}
+      >
         <Button variant="outlined" onClick={openPromptDialog}>
           AI Generate
         </Button>
@@ -172,7 +372,21 @@ const StrategyPlanning = () => {
         <Button variant="contained" color="success" onClick={handleExecute}>
           Execute
         </Button>
-      </Box>
+        <Button variant="text" onClick={handleResetChanges} disabled={!hasUnsavedChanges}>
+          Reset Changes
+        </Button>
+        <Typography
+          variant="caption"
+          color={hasUnsavedChanges ? 'warning.main' : 'text.secondary'}
+        >
+          {hasUnsavedChanges ? 'Unsaved changes' : 'All changes saved'}
+        </Typography>
+      </Stack>
+      {validationError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {validationError}
+        </Alert>
+      )}
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', flex: 1 }}>
@@ -232,6 +446,21 @@ const StrategyPlanning = () => {
                         )}
                       </Draggable>
                     ))}
+                    {col.blocks.length === 0 && (
+                      <Box
+                        sx={{
+                          border: '1px dashed',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          p: 1,
+                          textAlign: 'center',
+                          color: 'text.secondary',
+                          fontSize: 12,
+                        }}
+                      >
+                        Drop actions or add a new one to get started.
+                      </Box>
+                    )}
                     {provided.placeholder}
                   </Box>
                 </Box>
@@ -290,6 +519,61 @@ const StrategyPlanning = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                   Define possible outcomes based on the decision
                 </Typography>
+                <Stack spacing={2}>
+                  {(timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].decision_outputs ||
+                    []).map((output, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        p: 1,
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+                          Outcome {idx + 1}
+                        </Typography>
+                        <IconButton color="error" size="small" onClick={() => handleRemoveDecisionOutput(idx)}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                      <TextField
+                        label="Condition"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        value={output?.condition || ''}
+                        onChange={(e) => handleDecisionOutputChange(idx, 'condition', e.target.value)}
+                      />
+                      <FormControl fullWidth sx={{ mt: 1 }}>
+                        <InputLabel>Next Timing</InputLabel>
+                        <Select
+                          label="Next Timing"
+                          value={output?.next_timing || ''}
+                          onChange={(e) => handleDecisionOutputChange(idx, 'next_timing', e.target.value)}
+                        >
+                          {timeline.map((col) => (
+                            <MenuItem key={col.timing} value={col.timing}>
+                              {col.timing}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        label="Action"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        value={output?.action || ''}
+                        onChange={(e) => handleDecisionOutputChange(idx, 'action', e.target.value)}
+                        helperText="Optional: describe the action once this path is taken"
+                      />
+                    </Box>
+                  ))}
+                  <Button variant="outlined" onClick={handleAddDecisionOutput}>
+                    + Add Outcome
+                  </Button>
+                </Stack>
               </Box>
             ) : (
               // Action Block Editor
@@ -340,11 +624,11 @@ const StrategyPlanning = () => {
                   }
                   onChange={(e) => handleBlockChange('content', e.target.value)}
                 />
-                {userDetails?.contact_methods && (
+                {userDetails?.contact_methods && Array.isArray(userDetails.contact_methods) && userDetails.contact_methods.length > 0 && (
                   <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Contact Method Detail</InputLabel>
+                    <InputLabel>Contact Method</InputLabel>
                     <Select
-                      label="Contact Method Detail"
+                      label="Contact Method"
                       value={
                         timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
                           .contact_method_detail || ''
@@ -353,16 +637,16 @@ const StrategyPlanning = () => {
                     >
                       {userDetails.contact_methods.map((cm, idx) => (
                         <MenuItem key={idx} value={cm.value}>
-                          {cm.label || cm.method}: {cm.value} {cm.is_preferred ? '⭐' : ''}
+                          {cm.label || `${cm.method.charAt(0).toUpperCase() + cm.method.slice(1)} ${idx + 1}`}: {cm.value} {cm.is_preferred ? '⭐ (Preferred)' : ''}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 )}
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Preferred Contact</InputLabel>
+                  <InputLabel>Preferred Contact Type</InputLabel>
                   <Select
-                    label="Preferred Contact"
+                    label="Preferred Contact Type"
                     value={
                       timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
                         .preferred_contact || userDetails?.preferred_contact || ''
@@ -373,9 +657,18 @@ const StrategyPlanning = () => {
                     <MenuItem value="phone">Phone</MenuItem>
                     <MenuItem value="sms">SMS</MenuItem>
                   </Select>
+                  {userDetails?.preferred_contact && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      User's preferred: {userDetails.preferred_contact}
+                    </Typography>
+                  )}
                 </FormControl>
               </Box>
             )}
+            <Divider sx={{ my: 2 }} />
+            <Button color="error" onClick={handleRemoveBlock} startIcon={<Delete />} disabled={!selectedBlock}>
+              Delete Block
+            </Button>
           </Box>
         ) : (
           <Typography>Select a block to edit</Typography>

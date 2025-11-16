@@ -18,7 +18,7 @@ const Header = ({ onOpenUpload, search, onSearchChange }) => {
           />
         </Box>
         <Button color="inherit" variant="outlined" onClick={onOpenUpload}>
-          Add User
+          Add Users / Upload CSV
         </Button>
       </Toolbar>
     </AppBar>

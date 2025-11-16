@@ -59,10 +59,16 @@ def analytics(db: Session = Depends(get_db)):
     users = crud.list_users(db)
     counts = crud.compute_counts_by_status(users)
     avg_overdue = crud.compute_avg_overdue_days(users)
+    collections = crud.compute_collections_analytics(users)
+    
     return schemas.AnalyticsResponse(
         counts_by_status=counts,
         avg_overdue_days=avg_overdue,
         total_users=len(users),
+        total_amount_owed=collections["total_amount_owed"],
+        total_amount_collected=collections["total_amount_collected"],
+        total_remaining=collections["total_remaining"],
+        timeline_data=collections["timeline_data"],
     )
 
 

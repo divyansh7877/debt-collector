@@ -215,3 +215,54 @@ def compute_avg_overdue_days(users: Iterable[models.User]) -> float:
     if not diffs:
         return 0.0
     return sum(diffs) / len(diffs)
+
+
+def compute_collections_analytics(users: Iterable[models.User]) -> Dict[str, Any]:
+    """Compute collections-related analytics from users."""
+    total_amount_owed = 0.0
+    total_amount_collected = 0.0
+    timeline_data: List[Dict[str, Any]] = []
+
+    for u in users:
+        details = u.details or {}
+        
+        # Amount owed
+        amount_owed = details.get("amount_owed", 0)
+        if isinstance(amount_owed, (int, float)):
+            total_amount_owed += float(amount_owed)
+        
+        # Amount collected (from payment_history or total_paid)
+        total_paid = details.get("total_paid", 0)
+        if isinstance(total_paid, (int, float)):
+            total_amount_collected += float(total_paid)
+        else:
+            # Fallback: calculate from payment_history
+            payment_history = details.get("payment_history", [])
+            if isinstance(payment_history, list):
+                paid = sum(p.get("amount", 0) for p in payment_history if isinstance(p, dict))
+                total_amount_collected += paid
+        
+        # Add payment history to timeline
+        payment_history = details.get("payment_history", [])
+        if isinstance(payment_history, list):
+            for payment in payment_history:
+                if isinstance(payment, dict) and payment.get("date"):
+                    timeline_data.append({
+                        "user_id": u.id,
+                        "user_name": u.name,
+                        "date": payment.get("date"),
+                        "amount": payment.get("amount", 0),
+                        "installment_number": payment.get("installment_number"),
+                    })
+    
+    # Sort timeline by date
+    timeline_data.sort(key=lambda x: x.get("date", ""))
+    
+    total_remaining = max(0.0, total_amount_owed - total_amount_collected)
+    
+    return {
+        "total_amount_owed": total_amount_owed,
+        "total_amount_collected": total_amount_collected,
+        "total_remaining": total_remaining,
+        "timeline_data": timeline_data,
+    }
