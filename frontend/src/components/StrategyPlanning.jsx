@@ -422,7 +422,24 @@ const StrategyPlanning = () => {
       )}
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', flex: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 2, 
+          overflowX: 'auto', 
+          overflowY: 'hidden',
+          flex: 1,
+          minWidth: 0, // Allow flex item to shrink below content size
+          '&::-webkit-scrollbar': {
+            height: 8,
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'rgba(0,0,0,0.05)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: 4,
+          },
+        }}>
           {timeline.map((col, colIndex) => (
             <Droppable droppableId={`col-${colIndex}`} key={colIndex}>
               {(provided) => (
@@ -431,6 +448,9 @@ const StrategyPlanning = () => {
                   {...provided.droppableProps}
                   sx={{
                     minWidth: 260,
+                    maxWidth: 320,
+                    width: 280,
+                    flexShrink: 0, // Prevent columns from shrinking
                     backgroundColor: COLUMN_COLORS[colIndex] || COLUMN_COLORS[COLUMN_COLORS.length - 1],
                     border: '1px solid',
                     borderColor: colIndex < 2 ? 'success.light' : colIndex < 4 ? 'warning.light' : 'error.light',
@@ -438,6 +458,7 @@ const StrategyPlanning = () => {
                     p: 1,
                     display: 'flex',
                     flexDirection: 'column',
+                    overflow: 'hidden', // Prevent content from overflowing the column
                   }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -451,7 +472,7 @@ const StrategyPlanning = () => {
                       </Button>
                     </Stack>
                   </Box>
-                  <Box sx={{ flex: 1, minHeight: 50 }}>
+                  <Box sx={{ flex: 1, minHeight: 50, overflowY: 'auto', overflowX: 'hidden' }}>
                     {col.blocks.map((block, index) => (
                       <Draggable
                         key={`${colIndex}-${index}`}

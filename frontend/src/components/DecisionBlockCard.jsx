@@ -28,7 +28,20 @@ const DecisionBlockCard = ({ block, onClick }) => {
             />
           )}
         </Stack>
-        <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 0.5 }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontStyle: 'italic', 
+            mb: 0.5,
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {block.decision_prompt || 'Decision point'}
         </Typography>
         {block.decision_outputs && block.decision_outputs.length > 0 && (

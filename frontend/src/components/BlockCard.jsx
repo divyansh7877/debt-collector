@@ -41,7 +41,18 @@ const BlockCard = ({ block, onClick }) => {
             />
           )}
         </Stack>
-        <Typography variant="body2" noWrap>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {block.content}
         </Typography>
         {block.contact_method_detail && (
