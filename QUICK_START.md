@@ -1,147 +1,100 @@
-# Quick Start Guide - New Features
+# Quick Start Guide
 
-## What's New?
+Get up and running with the Collections Strategy Management System in minutes.
 
-### ✨ AI Decision Blocks
-Add intelligent decision logic between your action blocks to create dynamic collection strategies.
+## Prerequisites
 
-### ✨ Enhanced Contact Details
-Specify exactly which phone number or email to use for each action, with preferred contact indicators.
+- Python 3.x with Conda installed
+- Node.js and npm installed
 
-## Getting Started
+## Setup
 
-### 1. Start the Application
+### 1. Backend Setup
 
 ```bash
-# Terminal 1 - Backend
+# Activate Conda environment
+conda activate serve
+
+# Install dependencies (if not already installed)
+pip install -r requirements.txt
+```
+
+### 2. Frontend Setup
+
+```bash
+cd frontend
+npm install
+```
+
+### 3. Load Mock Data (Optional)
+
+```bash
+# From project root
+rm test.db  # Remove existing database (optional)
+conda run -n serve python populate_mock_data.py
+```
+
+## Running the Application
+
+### Start Backend
+
+```bash
+# Terminal 1
 conda activate serve
 uvicorn main:app --reload
+```
 
-# Terminal 2 - Frontend
+Backend will be available at `http://localhost:8000`
+
+### Start Frontend
+
+```bash
+# Terminal 2
 cd frontend
 npm run dev
 ```
 
-### 2. Load Mock Data
+Frontend will be available at `http://localhost:3000`
 
-The database already contains users with contact information. To reset:
+## Quick Tour
 
-```bash
-rm test.db
-conda run -n serve python populate_mock_data.py
-```
+### 1. View Users
+- Users are displayed in the left sidebar
+- Click on any user to view details
 
-## Using Decision Blocks
+### 2. Create a Strategy
+- Select a user from the sidebar
+- Go to **Strategy Planning** tab
+- Click **"AI Generate"** to create a strategy automatically, or
+- Click **"+ Action"** to add action blocks manually
 
-### Add a Decision Block
-
-1. Select a user (e.g., "Div")
-2. Go to **Strategy Planning** tab
-3. Click **"+ Decision"** button in any timeline column
-4. Click the purple decision block to edit
-5. Fill in:
-   - **Decision Prompt**: What condition to check?
-     - Example: "Check if user responded to last email"
-   - **Data Sources**: What data to use? (comma-separated)
-     - Example: "email_log, payment_history"
-6. Click **Save Strategy**
-
-### Example Decision Prompts
-
-- "Has user made any payment in last 7 days?"
-- "Did user respond to previous communication?"
-- "Is outstanding amount less than ₹5000?"
-- "Has user requested payment plan?"
-
-## Using Enhanced Contact Details
-
-### Add Action Block with Contact Details
-
-1. Click **"+ Action"** button
+### 3. Add Action Blocks
+1. Click **"+ Action"** in any timeline column
 2. Click the action block to edit
-3. Fill in basic details:
+3. Fill in:
    - **Source**: Email / SMS / Call
    - **Tone**: Friendly / Neutral / Firm / Escalation
    - **Content**: Your message
-4. **New!** Select specific contact:
-   - **Contact Method Detail**: Choose from user's contact list
-     - Shows all emails/phones with labels
-     - ⭐ indicates preferred contact
-5. **New!** Set **Preferred Contact**: Email / Phone / SMS
-6. Click **Save Strategy**
+   - **Contact Method Detail**: Select specific contact from user's list
+   - **Preferred Contact**: Set preferred method type
+4. Click **Save Strategy**
 
-### Example Workflow
+### 4. Add Decision Blocks
+1. Click **"+ Decision"** in any timeline column
+2. Click the purple decision block to edit
+3. Fill in:
+   - **Decision Prompt**: What condition to check?
+     - Example: "Check if user responded to last email"
+   - **Data Sources**: Comma-separated data sources
+     - Example: "email_log, payment_history"
+4. Click **Save Strategy**
 
-```
-User: Div
-Contact Methods:
-- Primary Email: div@example.com ⭐
-- Mobile: +91-98765-43210
-- Office: +91-98765-43211
+## Timeline Columns
 
-Strategy:
-┌─────────────────────────────┐
-│ Day 1-7                     │
-├─────────────────────────────┤
-│ 📧 Email - Friendly         │
-│ "Gentle payment reminder"   │
-│ Via: div@example.com ⭐      │
-└─────────────────────────────┘
-```
+The strategy timeline has 6 columns representing different stages:
 
-## Strategy Planning Tips
-
-### 🎯 Best Practices for Decision Blocks
-
-1. **Place between key stages**: 
-   - After initial contact → Before escalation
-   - After multiple attempts → Before final notice
-
-2. **Use relevant data sources**:
-   - `payment_history` - Check payment patterns
-   - `communication_log` - Track responses
-   - `user_profile` - Use demographic info
-
-3. **Define clear outcomes**:
-   - What happens if condition is TRUE?
-   - What happens if condition is FALSE?
-   - Which timeline column to jump to?
-
-### 📞 Contact Method Strategy
-
-1. **Start with preferred method** (marked with ⭐)
-2. **Escalate to alternative methods** if no response
-3. **Use multiple channels** for urgent matters
-
-### Example Multi-Channel Strategy
-
-```
-Day 1-7:   Email (Preferred) → Friendly
-Day 8-14:  SMS (Alternative) → Neutral
-           ↓
-        [Decision: Did they respond?]
-           ↓
-    ┌──────┴──────┐
-   YES            NO
-    │              │
-Day 15-30:    Day 15-30:
-Thank you     Phone Call (Direct) → Firm
-```
-
-## Visual Indicators
-
-### Block Types
-
-| Visual | Type | Description |
-|--------|------|-------------|
-| 📧/📞/💬 + Color chip | Action Block | Execute communication |
-| 🧠 + Purple gradient | Decision Block | Evaluate condition |
-| ⭐ Star chip | Preferred Contact | User's preferred method |
-
-### Color Coding (Timeline Columns)
-
-| Days | Color | Urgency | Tone |
-|------|-------|---------|------|
+| Days | Color | Urgency | Typical Tone |
+|------|-------|---------|--------------|
 | 1-7 | 🟢 Green | Low | Friendly |
 | 8-14 | 🟢 Light Green | Low-Medium | Neutral |
 | 15-30 | 🟡 Yellow | Medium | Firm |
@@ -149,85 +102,67 @@ Thank you     Phone Call (Direct) → Firm
 | 51-90 | 🟠 Deep Orange | High | Escalation |
 | 90+ | 🔴 Red | Critical | Escalation |
 
-## Keyboard Shortcuts
-
-- Click any block → Opens editor drawer
-- Drag & drop blocks → Reorder within/between columns
-- Click outside drawer → Close without saving
-
-## Sample Strategy Templates
-
-### 1. Gentle Escalation (Preferred Contact Focused)
+## Example Strategy
 
 ```
-Day 1-7:    Email (Preferred) - Friendly reminder
-Day 8-14:   Email (Preferred) - Follow-up
-[Decision: Check if user opened emails]
-  → YES: Day 31-50 (Phone call - offer help)
-  → NO: Day 15-30 (SMS - alternate channel)
+Day 1-7:    📧 Email (Preferred) - Friendly reminder
+Day 8-14:   📧 Email (Preferred) - Follow-up
+            ↓
+        [🧠 Decision: Did they respond?]
+            ↓
+    ┌──────┴──────┐
+   YES            NO
+    │              │
+Day 31-50:    Day 15-30:
+Thank you     📞 Phone Call - Firm
 ```
 
-### 2. Multi-Touch Approach
+## Common Tasks
 
-```
-Day 1-7:    Email - Initial contact
-Day 8-14:   SMS - Quick reminder
-[Decision: Any payment received?]
-  → YES: Day 31-50 (Thank you email)
-  → NO: Day 15-30 (Phone call - discuss plan)
-Day 31-50:  Email - Final notice
-[Decision: Response to final notice?]
-  → YES: Day 51-90 (Payment plan setup)
-  → NO: Day 90+ (Escalate to legal)
-```
+### Upload User Data
+1. Click **Upload** button in header
+2. Select Excel (.xlsx, .xls) or PDF file
+3. For Excel: First row should contain column headers (requires "name" column)
+4. For PDF: Provide user_id or create new user
 
-### 3. Quick Resolution Path
+### View Analytics
+- Analytics are displayed in the left sidebar
+- Shows counts by status and average overdue days
 
-```
-Day 1-7:    Email (Preferred) - Payment due reminder
-[Decision: Full payment received?]
-  → YES: DONE (Send receipt)
-  → NO: Continue
-Day 8-14:   Phone + Email - Payment options
-[Decision: Partial payment or commitment?]
-  → YES: Day 31-50 (Set up plan)
-  → NO: Day 15-30 (Firm notice)
-```
+### Update User Status
+- Click on a user
+- Change status: `pending` → `ongoing` → `finished`
 
 ## Troubleshooting
 
-### Decision Block Not Showing?
+### Backend won't start
+- Ensure Conda environment is activated: `conda activate serve`
+- Check if port 8000 is available
+- Verify dependencies: `pip install -r requirements.txt`
 
-- Make sure backend is updated (restart server)
-- Check that timeline has blocks with `block_type: "decision"`
-- Clear browser cache and reload
+### Frontend won't start
+- Check if Node.js is installed: `node --version`
+- Install dependencies: `cd frontend && npm install`
+- Check if port 3000 is available
 
-### Contact Methods Not Appearing?
-
+### Contact methods not appearing
 - Verify user has `contact_methods` in details
-- Check user data with: `curl http://localhost:8000/users/1`
-- Reload database: `rm test.db && python populate_mock_data.py`
+- Reload database: `rm test.db && conda run -n serve python populate_mock_data.py`
 
-### Can't Edit Blocks?
-
-- Ensure drawer is open (click on a block)
-- Check console for JavaScript errors
-- Verify Redux state is updating
+### Decision blocks not showing
+- Restart backend server
+- Clear browser cache and reload
+- Check browser console for errors
 
 ## Next Steps
 
-1. **Experiment** with different decision points
-2. **Test** contact preferences with real users
-3. **Analyze** which strategies work best
-4. **Refine** based on actual response rates
+- Explore the API documentation at `http://localhost:8000/docs`
+- Read the full README.md for detailed information
+- Experiment with different strategy templates
+- Test AI generation with xAI API key (optional)
 
 ## Need Help?
 
-Check the detailed documentation:
-- `FEATURE_DECISION_BLOCKS.md` - Complete technical details
-- `CHANGES.md` - Summary of all changes
-- `WARP.md` - Project architecture guide
-
----
-
-**Pro Tip**: Start with the AI Generate button to see an example strategy with decision blocks, then customize it for your needs!
+- Check API documentation: `http://localhost:8000/docs`
+- Review README.md for architecture and tech stack details
+- Check browser console and backend logs for errors

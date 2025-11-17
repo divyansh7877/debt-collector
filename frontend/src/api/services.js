@@ -40,3 +40,10 @@ export const aiGenerate = (userId, prompt) =>
 
 export const executeStrategy = (userId) =>
   apiClient.post(`/strategies/${userId}/execute`);
+
+// Per‑block AI content generation
+export const aiGenerateBlockContent = (userId, block, prompt) =>
+  apiClient.post(`/strategies/${userId}/ai-generate-block-content`, {
+    block,
+    prompt,
+  });

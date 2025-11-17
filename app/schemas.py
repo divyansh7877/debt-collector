@@ -129,6 +129,19 @@ class AIGenerateRequest(BaseModel):
     prompt: Optional[str] = None
 
 
+class BlockContentAIGenerateRequest(BaseModel):
+    """Request body for generating AI content for a single action block."""
+
+    block: StrategyBlock
+    prompt: Optional[str] = None
+
+
+class BlockContentAIResponse(BaseModel):
+    """Response body containing AI‑generated content for an action block."""
+
+    content: str
+
+
 # ---- Ingestion Schemas ----
 
 

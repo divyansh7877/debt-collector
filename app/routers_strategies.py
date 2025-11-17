@@ -284,6 +284,135 @@ async def _generate_timeline_with_ai(
     return _build_default_timeline(details, prompt)
 
 
+def _build_default_action_content(
+    details: Dict[str, Any],
+    block: Dict[str, Any],
+    user_prompt: Optional[str],
+) -> str:
+    """Deterministic fallback content for an action block when AI is unavailable.
+
+    Uses basic heuristics based on amount owed, due date, and tone.
+    """
+    amount_owed = details.get("amount_owed")
+    amount_phrase = (
+        f"₹{amount_owed:,}" if isinstance(amount_owed, (int, float)) else "your outstanding balance"
+    )
+    tone = (block.get("tone") or "friendly").lower()
+    source = (block.get("source") or "email").lower()
+
+    # Basic tone-specific phrasing
+    if tone == "escalation":
+        prefix = "This is an important notice regarding"
+        call_to_action = "Immediate attention is required to avoid further action."
+    elif tone == "firm":
+        prefix = "This is a reminder regarding"
+        call_to_action = "Please make the payment or contact us to discuss options."
+    elif tone == "neutral":
+        prefix = "We are writing about"
+        call_to_action = "Please review your account and complete the payment at your earliest convenience."
+    else:  # friendly / default
+        prefix = "Just a gentle reminder about"
+        call_to_action = "If you have already paid, please ignore this message."
+
+    channel_phrase = "this email"
+    if source == "sms":
+        channel_phrase = "this message"
+    elif source in {"call", "phone"}:
+        channel_phrase = "this call"
+
+    extra = ""
+    if user_prompt:
+        extra = f" {user_prompt.strip()}"
+
+    return (
+        f"{prefix} {amount_phrase}. "
+        f"{call_to_action}{extra}".strip()
+    )
+
+
+async def _generate_action_content_with_ai(
+    details: Dict[str, Any],
+    block: Dict[str, Any],
+    user_prompt: Optional[str],
+) -> str:
+    """Generate AI content for a single action block using OpenAI (small model).
+
+    Falls back to a deterministic template if `OPENAI_API_KEY` is not configured
+    or if the API call fails.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return _build_default_action_content(details, block, user_prompt)
+
+    # Prepare context
+    amount_owed = details.get("amount_owed")
+    due_date = details.get("due_date")
+    preferred_contact = details.get("preferred_contact")
+    customer_name = details.get("name") or details.get("customer_name")
+
+    source = (block.get("source") or "email").lower()
+    tone = (block.get("tone") or "friendly").lower()
+
+    # Default to a concise planner prompt if none is provided
+    planner_prompt = user_prompt or "Write a concise, clear collection reminder."
+
+    system_prompt = (
+        "You are a collections communication assistant. "
+        "You write short, clear, and respectful messages for collections teams. "
+        "Use the requested tone but remain professional and compliant. "
+        "Return ONLY the message body, without explanations or surrounding quotes."
+    )
+
+    user_parts = [
+        f"Channel: {source}",
+        f"Tone: {tone}",
+    ]
+    if customer_name:
+        user_parts.append(f"Customer name: {customer_name}")
+    if amount_owed is not None:
+        user_parts.append(f"Outstanding amount: {amount_owed}")
+    if due_date:
+        user_parts.append(f"Due date: {due_date}")
+    if preferred_contact:
+        user_parts.append(f"Preferred contact method: {preferred_contact}")
+
+    context_str = "; ".join(user_parts)
+    full_user_content = (
+        f"{planner_prompt}\n\n"
+        f"Context: {context_str}\n\n"
+        "Write the message as it should be sent to the customer."
+    )
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    base_url = os.getenv("OPENAI_API_BASE_URL", "https://api.openai.com/v1")
+    url = f"{base_url.rstrip('/')}/chat/completions"
+
+    payload: Dict[str, Any] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": full_user_content},
+        ],
+        "temperature": 0.4,
+        "max_tokens": 300,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        return (content or "").strip()
+    except Exception:
+        # On any error, fall back to deterministic content
+        return _build_default_action_content(details, block, user_prompt)
+
+
 @router.get("/{owner_id}", response_model=Optional[schemas.StrategyRead])
 async def get_strategy(
     owner_id: int,
@@ -363,6 +492,37 @@ async def ai_generate_strategy(
         executed=strategy.executed,
         owner_type=owner_type,
     )
+
+
+@router.post(
+    "/{owner_id}/ai-generate-block-content",
+    response_model=schemas.BlockContentAIResponse,
+)
+async def ai_generate_block_content(
+    owner_id: int,
+    body: schemas.BlockContentAIGenerateRequest,
+    owner_type: schemas.OwnerTypeLiteral = Query("user"),
+    db: Session = Depends(get_db),
+):
+    """Generate AI content for a single action block.
+
+    Uses user or group details (e.g. outstanding amount, preferred contact) together
+    with the block configuration and an optional planner prompt to craft a
+    suitable message via OpenAI (or a deterministic fallback).
+    """
+    owner = _get_owner(db, owner_id, owner_type)
+
+    if isinstance(owner, models.User):
+        details: Dict[str, Any] = owner.details or {}
+    else:
+        # For groups, aggregate basic info
+        details = {"group_name": owner.name, "members": len(owner.users)}
+
+    # Convert Pydantic model to a plain dict for easier manipulation
+    block_dict = body.block.dict()
+
+    content = await _generate_action_content_with_ai(details, block_dict, body.prompt)
+    return schemas.BlockContentAIResponse(content=content)
 
 
 @router.post("/{owner_id}/execute", response_model=schemas.StrategyExecuteResponse)

@@ -26,7 +26,7 @@ import {
   updateStrategy as updateStrategyThunk,
 } from '../features/strategies/strategiesSlice.js';
 import { fetchUsers, fetchAnalytics } from '../features/users/usersSlice.js';
-import { getUser } from '../api/services.js';
+import { getUser, aiGenerateBlockContent } from '../api/services.js';
 import { Delete } from '@mui/icons-material';
 
 const DEFAULT_COLUMNS = ['Day 1-7', 'Day 8-14', 'Day 15-30', 'Day 31-50', 'Day 51-90', 'Day 90+'];
@@ -64,6 +64,9 @@ const StrategyPlanning = () => {
   const [selectedBlock, setSelectedBlock] = useState(null); // { colIndex, blockIndex }
   const [userDetails, setUserDetails] = useState(null);
   const [validationError, setValidationError] = useState(null);
+  const [blockAIPrompt, setBlockAIPrompt] = useState('');
+  const [blockAIGenerating, setBlockAIGenerating] = useState(false);
+  const [blockAIError, setBlockAIError] = useState(null);
 
   const currentStrategy = strategyState[selectedId];
 
@@ -84,6 +87,8 @@ const StrategyPlanning = () => {
     setPrompt(initialPromptValue);
     setSelectedBlock(null);
     setDrawerOpen(false);
+    setBlockAIPrompt('');
+    setBlockAIError(null);
     setValidationError(null);
   }, [initialTimeline, initialPromptValue, selectedId]);
 
@@ -147,6 +152,8 @@ const StrategyPlanning = () => {
   const handleBlockClick = (colIndex, blockIndex) => {
     setSelectedBlock({ colIndex, blockIndex });
     setDrawerOpen(true);
+    setBlockAIPrompt('');
+    setBlockAIError(null);
   };
 
   const handleBlockChange = (field, value) => {
@@ -284,6 +291,8 @@ const StrategyPlanning = () => {
     });
     setSelectedBlock(null);
     setDrawerOpen(false);
+    setBlockAIPrompt('');
+    setBlockAIError(null);
     setValidationError(null);
   };
 
@@ -337,6 +346,30 @@ const StrategyPlanning = () => {
         prompt,
       }),
     );
+  };
+
+  const handleGenerateBlockContent = async () => {
+    if (!selectedBlock) return;
+    const { colIndex, blockIndex } = selectedBlock;
+    const block =
+      timeline[colIndex]?.blocks?.[blockIndex];
+    if (!block || (block.block_type || 'action') !== 'action') {
+      return;
+    }
+    try {
+      setBlockAIGenerating(true);
+      setBlockAIError(null);
+      const res = await aiGenerateBlockContent(selectedId, block, blockAIPrompt);
+      const content = res?.data?.content;
+      if (content) {
+        handleBlockChange('content', content);
+      }
+    } catch (err) {
+      console.error('Failed to generate block content with AI', err);
+      setBlockAIError('Failed to generate content. Please try again.');
+    } finally {
+      setBlockAIGenerating(false);
+    }
   };
 
   const handleExecute = async () => {
@@ -624,6 +657,47 @@ const StrategyPlanning = () => {
                   }
                   onChange={(e) => handleBlockChange('content', e.target.value)}
                 />
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1,
+                    borderRadius: 1,
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    AI assist (optional)
+                  </Typography>
+                  <TextField
+                    label="Describe what you want the message to say"
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    sx={{ mb: 1 }}
+                    value={blockAIPrompt}
+                    onChange={(e) => setBlockAIPrompt(e.target.value)}
+                    placeholder="e.g. Emphasize a friendly reminder with a flexible payment plan"
+                  />
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleGenerateBlockContent}
+                      disabled={blockAIGenerating}
+                    >
+                      {blockAIGenerating ? 'Generating…' : 'Generate with AI'}
+                    </Button>
+                    {blockAIError && (
+                      <Typography variant="caption" color="error">
+                        {blockAIError}
+                      </Typography>
+                    )}
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    You can type your own content above or use AI to generate a starting point and edit it.
+                  </Typography>
+                </Box>
                 {userDetails?.contact_methods && Array.isArray(userDetails.contact_methods) && userDetails.contact_methods.length > 0 && (
                   <FormControl fullWidth sx={{ mb: 2 }}>
                     <InputLabel>Contact Method</InputLabel>
