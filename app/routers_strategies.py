@@ -215,41 +215,73 @@ async def _generate_timeline_with_ai(
     details: Dict[str, Any],
     prompt: str,
 ) -> List[Dict[str, Any]]:
-    """Call xAI Grok (or similar) to generate a strategy.
+    """Call OpenAI API to generate a strategy timeline.
 
-    For now this is written as a placeholder. If `XAI_API_KEY` is not present,
+    If `OPENAI_API_KEY` is not present or the API call fails,
     it falls back to a deterministic local strategy.
     """
-    api_key = os.getenv("XAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
         return _build_default_timeline(details, prompt)
 
-    # NOTE: The actual endpoint and payload depend on xAI's API.
-    # Adjust this function to match the real Grok API.
-    base_url = os.getenv("XAI_API_BASE_URL", "https://api.x.ai")
-    url = f"{base_url}/v1/chat/completions"
+    # Prepare context from details
+    amount_owed = details.get("amount_owed")
+    due_date = details.get("due_date")
+    preferred_contact = details.get("preferred_contact")
+    customer_name = details.get("name") or details.get("customer_name")
+    service = details.get("service")
 
     system_prompt = (
         "You are a collections strategy planner. "
-        "Given user or group details, output ONLY JSON with a 'timeline' key, "
-        "where 'timeline' is a list of columns with 'timing' and 'blocks'. "
-        "Each block has 'source', 'tone', and 'content'."
+        "Given user or group details, output ONLY valid JSON with a 'timeline' key. "
+        "The 'timeline' must be a list of objects, each with: "
+        "- 'timing': a string like 'Day 1-7', 'Day 8-14', 'Day 15-30', 'Day 31-50', 'Day 51-90', or 'Day 90+' "
+        "- 'blocks': a list of block objects. Each action block must have: "
+        "  'block_type': 'action', 'source': 'email'|'sms'|'call', 'tone': 'friendly'|'neutral'|'firm'|'escalation', 'content': string. "
+        "Decision blocks must have: 'block_type': 'decision', 'decision_prompt': string, "
+        "'decision_sources': list of strings, 'decision_outputs': list of objects with 'condition', 'next_timing', 'action'. "
+        "Return ONLY the JSON object, no markdown formatting or explanations."
     )
 
-    payload = {
-        "model": os.getenv("XAI_MODEL", "grok-beta"),
+    user_parts = [f"Strategy prompt: {prompt}"]
+    if customer_name:
+        user_parts.append(f"Customer name: {customer_name}")
+    if amount_owed is not None:
+        user_parts.append(f"Amount owed: {amount_owed}")
+    if due_date:
+        user_parts.append(f"Due date: {due_date}")
+    if preferred_contact:
+        user_parts.append(f"Preferred contact method: {preferred_contact}")
+    if service:
+        user_parts.append(f"Service: {service}")
+
+    context_str = "\n".join(user_parts)
+    full_user_content = (
+        f"{context_str}\n\n"
+        "Generate a collections strategy timeline with appropriate timing columns and action/decision blocks. "
+        "Output the JSON with a 'timeline' key containing the strategy."
+    )
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    base_url = os.getenv("OPENAI_API_BASE_URL", "https://api.openai.com/v1")
+    url = f"{base_url.rstrip('/')}/chat/completions"
+
+    payload: Dict[str, Any] = {
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"Details: {details}. Prompt: {prompt}. Output JSON only.",
-            },
+            {"role": "user", "content": full_user_content},
         ],
         "temperature": 0.3,
+        "max_tokens": 2000,
+        "response_format": {"type": "json_object"},
     }
 
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -260,9 +292,8 @@ async def _generate_timeline_with_ai(
         # On any error, fall back to deterministic plan
         return _build_default_timeline(details, prompt)
 
-    # Very defensive parsing; adapt to xAI's actual response schema.
+    # Parse OpenAI response
     try:
-        # Assume OpenAI-like schema
         content = data["choices"][0]["message"]["content"]
     except Exception:
         return _build_default_timeline(details, prompt)
