@@ -1,0 +1,5 @@
+Username,Service,Bill,DueDate,Installment1,Installment1Date,Installment2,Installment2Date,Installment3,Installment3Date,Installment4,Installment4Date,phone,email,phone2,prefferedcontactmethod
+Mr Jackson,PestControl1,10000,6/12/2025,3000,9/16/2025,2000,9/4/2025,500,9/10/2025,300,8/13/2025,123456789,xyz@nsjk.com,45562312,phone2
+Iris,PestControl2,20000,9/17/2025,3000,10/15/2025,2000,11/16/2025,,,,,123456789,xyz@nsjk.com,45562312,email
+Mark,PestControl3,30000,7/10/2025,0,11/4/2025,0,,0,,,,123456789,,,email
+Jimmy,PestControl4,40000,9/4/2025,500,10/15/2025,0,12/13/2025,,,,,,xyz@nsjk.com,,
