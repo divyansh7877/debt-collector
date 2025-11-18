@@ -101,69 +101,128 @@ serve_collection/
 ### Status Flow
 Users and Groups progress through: `pending` → `ongoing` → `finished`
 
-## Installation
+## Installation & Setup Guide
+
+This guide will help you get the Collections Strategy Management System running on your local machine.
 
 ### Prerequisites
-- Python 3.x
-- Node.js and npm
-- Conda (for environment management)
+- **Python 3.8+**: Download from [python.org](https://python.org)
+- **Node.js 16+ and npm**: Download from [nodejs.org](https://nodejs.org)
+- **Conda** (recommended for environment management): Download from [conda.io](https://conda.io)
+- **Git**: For cloning the repository
 
-### Backend Setup
+### Step 1: Clone the Repository
 
-1. Create and activate Conda environment:
 ```bash
-conda create -n serve python=3.x
+git clone <your-github-repo-url>
+cd serve_collection
+```
+
+### Step 2: Backend Setup
+
+1. **Create and activate Conda environment:**
+```bash
+# Create the environment (only needed once)
+conda create -n serve python=3.9
+
+# Activate the environment (needed for every session)
 conda activate serve
 ```
 
-2. Install Python dependencies:
+2. **Install Python dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. (Optional) Set environment variables for AI integration:
+3. **Set up environment variables for AI integration (Optional but Recommended):**
 ```bash
-export XAI_API_KEY="your-api-key"
-export XAI_API_BASE_URL="https://api.x.ai"  # Optional, default value
-export XAI_MODEL="grok-beta"  # Optional, default value
+# Create a .env file in the project root
+touch .env
+
+# Edit the .env file and add your OpenAI API key
+# OPENAI_API_KEY=your-openai-api-key-here
+# OPENAI_MODEL=gpt-4o-mini  # Optional, defaults to gpt-4o-mini
+# OPENAI_API_BASE_URL=https://api.openai.com/v1  # Optional, defaults to OpenAI
+
+# Or export them directly in your shell
+export OPENAI_API_KEY="your-openai-api-key-here"
 ```
 
-### Frontend Setup
+**Note:** If you don't set the `OPENAI_API_KEY`, the application will use deterministic fallback strategies instead of AI-generated ones.
 
-1. Navigate to frontend directory:
+### Step 3: Frontend Setup
+
+1. **Navigate to frontend directory:**
 ```bash
 cd frontend
 ```
 
-2. Install dependencies:
+2. **Install Node.js dependencies:**
 ```bash
 npm install
 ```
 
-## Running the Application
+3. **Return to project root:**
+```bash
+cd ..
+```
+
+### Step 4: Database Setup
+
+The application uses SQLite, which will be created automatically. To populate with sample data:
+
+```bash
+# Remove existing database (optional, for fresh start)
+rm test.db
+
+# Populate with mock data
+conda activate serve
+python populate_mock_data.py
+```
+
+## Step 5: Running the Application
 
 ### Development Mode
 
-**Terminal 1 - Backend:**
-```bash
-conda activate serve
-uvicorn main:app --reload
-```
-Backend runs at `http://localhost:8000`
+You'll need two terminal windows/tabs to run both the backend and frontend simultaneously.
 
-**Terminal 2 - Frontend:**
+**Terminal 1 - Start the Backend:**
+```bash
+# Ensure you're in the project root and conda environment is activated
+conda activate serve
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+- Backend API will be available at: `http://localhost:8000`
+- API Documentation: `http://localhost:8000/docs` (Swagger UI)
+- Alternative Docs: `http://localhost:8000/redoc`
+
+**Terminal 2 - Start the Frontend:**
 ```bash
 cd frontend
 npm run dev
 ```
-Frontend runs at `http://localhost:3000`
+- Frontend application will be available at: `http://localhost:3000`
+- The frontend will automatically proxy API requests to the backend
 
-### Load Mock Data
+### Verify Installation
 
-To populate the database with sample data:
+1. **Check Backend:** Visit `http://localhost:8000` - you should see `{"message": "Collections strategy backend is running"}`
+2. **Check API Docs:** Visit `http://localhost:8000/docs` - you should see the Swagger documentation
+3. **Check Frontend:** Visit `http://localhost:3000` - you should see the Collections Strategy Management interface
+
+### Production Mode (Optional)
+
+**Build Frontend for Production:**
 ```bash
-rm test.db  # Remove existing database (optional)
-conda run -n serve python populate_mock_data.py
+cd frontend
+npm run build
+npm run preview  # Preview the production build
+```
+
+**Run Backend in Production:**
+```bash
+conda activate serve
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Testing
@@ -206,20 +265,168 @@ The strategy timeline includes 6 stages with color-coded urgency:
 - **Day 51-90**: Deep Orange (Escalation tone)
 - **Day 90+**: Red (Escalation tone)
 
-## Environment Variables
+## Configuration
 
-### Optional AI Integration
-- `XAI_API_KEY`: API key for xAI Grok (if not set, uses deterministic fallback)
-- `XAI_API_BASE_URL`: Base URL for xAI API (default: `https://api.x.ai`)
-- `XAI_MODEL`: Model name (default: `grok-beta`)
+### Environment Variables
 
-## Database
+The application uses the following environment variables:
 
-The application uses SQLite (`test.db`) which is created automatically on first run. To reset:
+#### Required for AI Features
+- `OPENAI_API_KEY`: Your OpenAI API key for AI-generated strategies
+  - Get one at: https://platform.openai.com/api-keys
+  - If not set, the app uses deterministic fallback strategies
+
+#### Optional AI Configuration
+- `OPENAI_MODEL`: AI model to use (default: `gpt-4o-mini`)
+  - Other options: `gpt-3.5-turbo`, `gpt-4`, etc.
+- `OPENAI_API_BASE_URL`: Custom API base URL (default: `https://api.openai.com/v1`)
+  - Useful for proxies or custom endpoints
+
+#### Setting Environment Variables
+
+**Option 1: Using a .env file (Recommended)**
 ```bash
-rm test.db
+# Create .env file in project root
+echo "OPENAI_API_KEY=your-key-here" > .env
+echo "OPENAI_MODEL=gpt-4o-mini" >> .env
 ```
-Tables will be recreated on next server start.
+
+**Option 2: Export in shell**
+```bash
+export OPENAI_API_KEY="your-key-here"
+export OPENAI_MODEL="gpt-4o-mini"
+```
+
+### Database Configuration
+
+The application uses SQLite (`test.db`) which is created automatically on first run.
+
+**Database Location:** `test.db` in the project root directory
+
+**Reset Database:**
+```bash
+# Stop the backend server first
+rm test.db
+# Restart the backend - tables will be recreated automatically
+```
+
+**Database Schema:**
+- `users`: Individual users with contact information
+- `groups`: Collections of users
+- `strategies`: Collection strategies with timeline blocks
+
+### CORS Configuration
+
+The backend is configured to accept requests from:
+- `http://localhost:3000` (development frontend)
+- `http://127.0.0.1:3000` (alternative localhost)
+
+For production deployment, update the CORS origins in `main.py`.
+
+## Troubleshooting
+
+### Common Issues & Solutions
+
+#### 1. Backend Won't Start
+**Symptoms:** `uvicorn main:app --reload` fails or shows errors
+
+**Solutions:**
+- Ensure Conda environment is activated: `conda activate serve`
+- Check Python version: `python --version` (should be 3.8+)
+- Verify dependencies: `pip install -r requirements.txt`
+- Check if port 8000 is available: `lsof -i :8000`
+- Try different host: `uvicorn main:app --reload --host 127.0.0.1 --port 8000`
+
+#### 2. Frontend Won't Start
+**Symptoms:** `npm run dev` fails or shows errors
+
+**Solutions:**
+- Check Node.js version: `node --version` (should be 16+)
+- Verify dependencies: `cd frontend && npm install`
+- Check if port 3000 is available: `lsof -i :3000`
+- Clear node_modules: `rm -rf node_modules && npm install`
+
+#### 3. Cannot Connect to Backend from Frontend
+**Symptoms:** Frontend loads but API calls fail
+
+**Solutions:**
+- Ensure backend is running on port 8000
+- Check CORS: Backend should accept requests from `http://localhost:3000`
+- Verify API endpoints: Visit `http://localhost:8000/docs`
+- Check browser console for CORS errors
+
+#### 4. Database Issues
+**Symptoms:** Data not persisting or errors about database
+
+**Solutions:**
+- Check if `test.db` exists in project root
+- Reset database: `rm test.db` then restart backend
+- Populate sample data: `python populate_mock_data.py`
+- Check file permissions on `test.db`
+
+#### 5. AI Strategy Generation Not Working
+**Symptoms:** Strategies are deterministic instead of AI-generated
+
+**Solutions:**
+- Set `OPENAI_API_KEY` environment variable
+- Check API key validity at https://platform.openai.com/api-keys
+- Verify internet connection for API calls
+- Check backend logs for API errors
+
+#### 6. Import/Upload Features Not Working
+**Symptoms:** Cannot upload Excel/PDF files
+
+**Solutions:**
+- Check file permissions on `uploads/` directory
+- Verify required Python packages: `pip install pandas PyPDF2`
+- Check file formats (Excel: .xlsx/.xls, PDF: .pdf)
+- Review backend logs for detailed error messages
+
+#### 7. Port Already in Use
+**Symptoms:** "Port 8000/3000 already in use"
+
+**Solutions:**
+- Find process using port: `lsof -i :8000` or `lsof -i :3000`
+- Kill process: `kill -9 <PID>`
+- Or use different ports: `--port 8001` for backend, change Vite config for frontend
+
+#### 8. Conda Environment Issues
+**Symptoms:** `conda activate serve` fails
+
+**Solutions:**
+- Create environment if missing: `conda create -n serve python=3.9`
+- Initialize conda for your shell: `conda init <shell>`
+- Restart terminal after conda init
+- Use full path: `~/anaconda3/bin/conda activate serve`
+
+### Getting Help
+
+1. **Check Logs:** Both backend and frontend will show detailed error messages
+2. **API Documentation:** Visit `http://localhost:8000/docs` for endpoint details
+3. **Browser Console:** Check for JavaScript errors (F12 → Console)
+4. **Test Endpoints:** Use Swagger UI to test API endpoints directly
+
+### System Requirements Check
+
+Run these commands to verify your system:
+
+```bash
+# Python & Conda
+python --version          # Should be 3.8+
+conda --version          # Should work
+conda activate serve     # Should activate environment
+
+# Node.js & npm
+node --version           # Should be 16+
+npm --version            # Should work
+
+# Git
+git --version            # Should work
+
+# Ports (should be empty)
+lsof -i :8000 || echo "Port 8000 free"
+lsof -i :3000 || echo "Port 3000 free"
+```
 
 ## Development Notes
 
