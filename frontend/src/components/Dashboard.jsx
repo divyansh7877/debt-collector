@@ -78,13 +78,13 @@ const Dashboard = () => {
   timeline_data?.forEach((item) => {
     const date = item.date;
     if (!timelineMap[date]) {
-      timelineMap[date] = { date, amount: 0, count: 0 };
+      timelineMap[date] = { date, timestamp: new Date(date).getTime(), amount: 0, count: 0 };
     }
     timelineMap[date].amount += item.amount || 0;
     timelineMap[date].count += 1;
   });
   const timelineChartData = Object.values(timelineMap)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort((a, b) => a.timestamp - b.timestamp)
     .slice(-30); // Last 30 days
 
   // Format currency
@@ -174,14 +174,14 @@ const Dashboard = () => {
 
       <Grid container spacing={3}>
         {/* Status Distribution */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Status Distribution
               </Typography>
-              <Box sx={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
+              <Box sx={{ width: '100%', height: 500, minHeight: 500, minWidth: 600 }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={statusData}
@@ -189,7 +189,7 @@ const Dashboard = () => {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
+                      outerRadius={180}
                       label
                     >
                       {statusData.map((entry, index) => (
@@ -227,27 +227,46 @@ const Dashboard = () => {
         </Grid>
 
         {/* Payment Timeline */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Payment Timeline
               </Typography>
               {timelineChartData.length > 0 ? (
-                <Box sx={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={timelineChartData}>
+                <Box sx={{ width: '100%', height: 500, minHeight: 500, minWidth: 800 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={timelineChartData} margin={{ top: 5, right: 50, left: 20, bottom: 80 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
+                        dataKey="timestamp"
+                        type="number"
+                        scale="time"
+                        domain={['dataMin', 'dataMax']}
                         angle={-45}
                         textAnchor="end"
-                        height={80}
-                        tick={{ fontSize: 10 }}
+                        height={100}
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(timestamp) => {
+                          const date = new Date(timestamp);
+                          return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        }}
                       />
-                      <YAxis tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip
                         formatter={(value) => formatCurrency(value)}
+                        labelFormatter={(timestamp) => {
+                          const date = new Date(timestamp);
+                          return date.toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        }}
                         labelStyle={{ fontSize: 12 }}
                       />
                       <Line

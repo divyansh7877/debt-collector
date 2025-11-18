@@ -125,12 +125,13 @@ const HistoryDetails = () => {
     return paymentHistory
       .map((p) => ({
         date: p.date,
+        timestamp: new Date(p.date).getTime(),
         amount: p.amount,
         cumulative: paymentHistory
           .filter((x) => x.date <= p.date)
           .reduce((sum, x) => sum + (x.amount || 0), 0),
       }))
-      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }, [data]);
 
   if (loading) {
@@ -339,20 +340,39 @@ const HistoryDetails = () => {
                   <Typography variant="subtitle1" gutterBottom>
                     Payment Timeline
                   </Typography>
-                  <Box sx={{ width: '100%', height: 250 }}>
-                    <ResponsiveContainer>
-                      <LineChart data={timelineData}>
+                  <Box sx={{ width: '100%', height: 450, minWidth: 800 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={timelineData} margin={{ top: 5, right: 50, left: 20, bottom: 80 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
+                          type="number"
+                          scale="time"
+                          domain={['dataMin', 'dataMax']}
                           angle={-45}
                           textAnchor="end"
                           height={80}
-                          tick={{ fontSize: 10 }}
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(timestamp) => {
+                            const date = new Date(timestamp);
+                            return date.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                          }}
                         />
-                        <YAxis tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip
                           formatter={(value) => formatCurrency(value)}
+                          labelFormatter={(timestamp) => {
+                            const date = new Date(timestamp);
+                            return date.toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            });
+                          }}
                           labelStyle={{ fontSize: 12 }}
                         />
                         <Line

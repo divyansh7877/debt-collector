@@ -1,11 +1,28 @@
 import React from 'react';
-import { AppBar, Box, Button, TextField, Toolbar, Typography } from '@mui/material';
+import { useDispatch } from 'react-redux';
+import { AppBar, Box, Button, IconButton, TextField, Toolbar, Typography } from '@mui/material';
+import HomeIcon from '@mui/icons-material/Home';
+import { clearSelection } from '../features/users/usersSlice.js';
 
 const Header = ({ onOpenUpload, search, onSearchChange }) => {
+  const dispatch = useDispatch();
+
+  const handleHomeClick = () => {
+    dispatch(clearSelection());
+  };
+
   return (
     <AppBar position="static" color="primary">
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        <IconButton
+          color="inherit"
+          onClick={handleHomeClick}
+          sx={{ mr: 2 }}
+          aria-label="home"
+        >
+          <HomeIcon />
+        </IconButton>
+        <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={handleHomeClick}>
           Collections App
         </Typography>
         <Box sx={{ mr: 2, width: 300 }}>
