@@ -79,7 +79,55 @@ def create_user_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+    db.refresh(doc)
     return doc
+
+
+def add_user_payment(
+    db: Session,
+    *,
+    user_id: int,
+    payment: schemas.PaymentCreate,
+) -> models.User:
+    user = get_user(db, user_id)
+    if not user:
+        raise ValueError("User not found")
+
+    # Update details JSON
+    details = dict(user.details or {})
+    payment_history = list(details.get("payment_history", []))
+    
+    new_payment = {
+        "amount": payment.amount,
+        "date": payment.date,
+        "installment_number": payment.installment_number,
+        "notes": payment.notes,
+        "added_at": datetime.utcnow().isoformat(),
+    }
+    payment_history.append(new_payment)
+    
+    # Update totals
+    total_paid = float(details.get("total_paid", 0)) + payment.amount
+    amount_owed = float(details.get("amount_owed", 0))
+    remaining_amount = max(0, amount_owed - total_paid)
+    
+    details["payment_history"] = payment_history
+    details["total_paid"] = total_paid
+    details["remaining_amount"] = remaining_amount
+    
+    user.details = details
+
+    if remaining_amount <= 0:
+        user.status = models.StatusEnum.FINISHED
+    
+    # Force update for SQLAlchemy to detect JSON change
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, "details")
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 # ---- Group CRUD ----

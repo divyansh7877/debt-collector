@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Accordion,
   AccordionDetails,
@@ -19,6 +19,11 @@ import {
   TableRow,
   Typography,
   Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -27,15 +32,26 @@ import {
   AccountBalance,
   CheckCircle,
   Warning,
+  Delete as DeleteIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
+import { updateStatus } from '../features/users/usersSlice.js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 import { getUser } from '../api/services.js';
 
 const HistoryDetails = () => {
+  const dispatch = useDispatch();
   const { selectedId } = useSelector((state) => state.users);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    installment_number: '',
+    notes: '',
+  });
 
   useEffect(() => {
     if (!selectedId) {
@@ -118,6 +134,42 @@ const HistoryDetails = () => {
     return days !== null && days > 0;
   };
 
+  const handleAddPayment = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/users/${data.data.id}/payments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(paymentForm.amount),
+          date: paymentForm.date,
+          installment_number: paymentForm.installment_number ? parseInt(paymentForm.installment_number) : null,
+          notes: paymentForm.notes,
+        }),
+      });
+
+      if (response.ok) {
+        setOpenPaymentDialog(false);
+        setPaymentForm({
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+          installment_number: '',
+          notes: '',
+        });
+        // Refresh data
+        const res = await getUser(selectedId);
+        if (res && res.data) {
+          setData(res.data);
+        }
+      } else {
+        console.error('Failed to add payment');
+      }
+    } catch (error) {
+      console.error('Error adding payment:', error);
+    }
+  };
+
   // Prepare payment timeline chart data (must be defined before any early returns)
   const timelineData = useMemo(() => {
     const paymentHistory = data?.data?.details?.payment_history || [];
@@ -197,11 +249,35 @@ const HistoryDetails = () => {
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
           <Typography variant="h4">{entity.name}</Typography>
-          <Chip
-            label={entity.status || 'pending'}
-            color={getStatusColor(entity.status)}
-            size="medium"
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip
+              label={entity.status || 'pending'}
+              color={getStatusColor(entity.status)}
+              size="medium"
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenPaymentDialog(true)}
+            >
+              Add Payment
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={<DeleteIcon />}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to archive this user?')) {
+                  dispatch(updateStatus({ id: entity.id, status: 'archived' }));
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </Box>
         </Box>
         <Typography variant="body2" color="text.secondary">
           {type === 'user' ? 'User Details' : 'Group Details'} • ID: {entity.id}
@@ -643,6 +719,57 @@ const HistoryDetails = () => {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)}>
+        <DialogTitle>Add Payment</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: 300 }}>
+            <TextField
+              label="Amount"
+              type="number"
+              fullWidth
+              value={paymentForm.amount}
+              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+              InputProps={{
+                startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+              }}
+            />
+            <TextField
+              label="Date"
+              type="date"
+              fullWidth
+              value={paymentForm.date}
+              onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Installment Number (Optional)"
+              type="number"
+              fullWidth
+              value={paymentForm.installment_number}
+              onChange={(e) => setPaymentForm({ ...paymentForm, installment_number: e.target.value })}
+            />
+            <TextField
+              label="Notes (Optional)"
+              multiline
+              rows={2}
+              fullWidth
+              value={paymentForm.notes}
+              onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPaymentDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleAddPayment}
+            variant="contained"
+            disabled={!paymentForm.amount || !paymentForm.date}
+          >
+            Add Payment
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

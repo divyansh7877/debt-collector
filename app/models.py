@@ -22,6 +22,7 @@ class StatusEnum(str):
     PENDING = "pending"
     ONGOING = "ongoing"
     FINISHED = "finished"
+    ARCHIVED = "archived"
 
 
 class Group(Base):

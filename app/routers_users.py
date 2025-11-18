@@ -222,3 +222,18 @@ def upload_user_document(
         file_type=file.content_type,
     )
     return doc
+
+
+@router.post("/{id}/payments", response_model=schemas.UserRead)
+def add_payment(
+    id: int,
+    payment: schemas.PaymentCreate,
+    db: Session = Depends(get_db),
+):
+    try:
+        user = crud.add_user_payment(db, user_id=id, payment=payment)
+        return _pydantic_from_orm(schemas.UserRead, user)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding payment: {str(e)}")

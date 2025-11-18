@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
-StatusLiteral = Literal["pending", "ongoing", "finished"]
+StatusLiteral = Literal["pending", "ongoing", "finished", "archived"]
 OwnerTypeLiteral = Literal["user", "group"]
 BlockTypeLiteral = Literal["action", "decision"]
 
@@ -183,3 +183,10 @@ class AnalyticsResponse(BaseModel):
     total_amount_collected: float = 0.0
     total_remaining: float = 0.0
     timeline_data: List[Dict[str, Any]] = Field(default_factory=list)  # Payment timeline
+
+
+class PaymentCreate(BaseModel):
+    amount: float
+    date: str  # ISO date string YYYY-MM-DD
+    installment_number: Optional[int] = None
+    notes: Optional[str] = None

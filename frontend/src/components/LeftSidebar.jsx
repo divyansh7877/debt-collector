@@ -15,7 +15,7 @@ import AnalyticsCard from './AnalyticsCard.jsx';
 import UserListItem from './UserListItem.jsx';
 import { selectEntity, updateStatus } from '../features/users/usersSlice.js';
 
-const STATUSES = ['pending', 'ongoing', 'finished'];
+const STATUSES = ['pending', 'ongoing', 'finished', 'archived'];
 
 const LeftSidebar = ({ search }) => {
   const dispatch = useDispatch();
