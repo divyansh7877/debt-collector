@@ -30,8 +30,18 @@ class UserUpdateStatus(BaseModel):
     status: StatusLiteral
 
 
+class UserDocumentRead(BaseModel):
+    id: int
+    filename: str
+    file_type: Optional[str] = None
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserRead(UserBase):
     id: int
+    documents: List[UserDocumentRead] = []
 
     # Support both Pydantic v1 and v2
     model_config = ConfigDict(from_attributes=True)

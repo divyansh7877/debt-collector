@@ -62,6 +62,26 @@ def upsert_user_from_details(
     return create_user(db, name=name, details=details)
 
 
+def create_user_document(
+    db: Session,
+    *,
+    user_id: int,
+    filename: str,
+    file_path: str,
+    file_type: Optional[str] = None,
+) -> models.UserDocument:
+    doc = models.UserDocument(
+        user_id=user_id,
+        filename=filename,
+        file_path=file_path,
+        file_type=file_type,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
 # ---- Group CRUD ----
 
 

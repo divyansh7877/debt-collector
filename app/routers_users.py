@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import os
+import shutil
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from sqlalchemy.orm import Session, joinedload
 
 from . import crud, models, schemas
@@ -188,3 +191,34 @@ def update_status(
         return {"type": "group", "data": _pydantic_to_dict(updated_read)}
 
     raise HTTPException(status_code=404, detail="User or group not found")
+
+
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+@router.post("/{id}/documents", response_model=schemas.UserDocumentRead)
+def upload_user_document(
+    id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    user = crud.get_user(db, id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Sanitize filename to prevent directory traversal
+    safe_filename = os.path.basename(file.filename)
+    file_path = UPLOAD_DIR / f"{id}_{safe_filename}"
+    
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    doc = crud.create_user_document(
+        db,
+        user_id=id,
+        filename=safe_filename,
+        file_path=str(file_path),
+        file_type=file.content_type,
+    )
+    return doc

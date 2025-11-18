@@ -61,6 +61,20 @@ class User(Base):
 
     group = relationship("Group", back_populates="users")
     strategies = relationship("Strategy", back_populates="user")
+    documents = relationship("UserDocument", back_populates="user")
+
+
+class UserDocument(Base):
+    __tablename__ = "user_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_type = Column(String, nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="documents")
 
 
 class Strategy(Base):

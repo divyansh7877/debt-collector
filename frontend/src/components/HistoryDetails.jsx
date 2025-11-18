@@ -18,6 +18,7 @@ import {
   TableHead,
   TableRow,
   Typography,
+  Button,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -176,7 +177,7 @@ const HistoryDetails = () => {
       </Box>
     );
   }
-  
+
   const details = entity.details || {};
   const historyText = details.history_text;
   const paymentHistory = details.payment_history || [];
@@ -510,14 +511,14 @@ const HistoryDetails = () => {
                     'communication_preferences',
                   ].includes(key),
               ).length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={2} align="center">
-                    <Typography variant="body2" color="text.secondary">
-                      No additional details available
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
+                  <TableRow>
+                    <TableCell colSpan={2} align="center">
+                      <Typography variant="body2" color="text.secondary">
+                        No additional details available
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
             </TableBody>
           </Table>
         </AccordionDetails>
@@ -536,6 +537,85 @@ const HistoryDetails = () => {
           </AccordionDetails>
         </Accordion>
       )}
+
+      {/* Documents Section */}
+      <Accordion sx={{ mb: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
+            <Typography variant="h6">Documents</Typography>
+            <Button
+              variant="contained"
+              size="small"
+              component="label"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Upload File
+              <input
+                type="file"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  const formData = new FormData();
+                  formData.append('file', file);
+
+                  try {
+                    const response = await fetch(`http://localhost:8000/users/${entity.id}/documents`, {
+                      method: 'POST',
+                      body: formData,
+                    });
+
+                    if (response.ok) {
+                      // Refresh data
+                      const res = await getUser(selectedId);
+                      if (res && res.data) {
+                        setData(res.data);
+                      }
+                    } else {
+                      console.error('Upload failed');
+                    }
+                  } catch (error) {
+                    console.error('Error uploading file:', error);
+                  }
+                }}
+              />
+            </Button>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          {entity.documents && entity.documents.length > 0 ? (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Filename</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Uploaded At</TableCell>
+                  <TableCell align="right">Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {entity.documents.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell>{doc.filename}</TableCell>
+                    <TableCell>{doc.file_type || 'N/A'}</TableCell>
+                    <TableCell>{new Date(doc.uploaded_at).toLocaleString()}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" variant="outlined">
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <Typography variant="body2" color="text.secondary" align="center">
+              No documents uploaded yet.
+            </Typography>
+          )}
+        </AccordionDetails>
+      </Accordion>
 
       {/* Group Information */}
       {type === 'user' && group && (
