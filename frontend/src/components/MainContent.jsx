@@ -1,24 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Tab, Tabs } from '@mui/material';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import Dashboard from './Dashboard.jsx';
 import HistoryDetails from './HistoryDetails.jsx';
 import StrategyPlanning from './StrategyPlanning.jsx';
 import { fetchStrategy } from '../features/strategies/strategiesSlice.js';
 
-const TabPanel = ({ children, value, index }) => {
-  return (
-    <div role="tabpanel" hidden={value !== index} style={{ height: '100%' }}>
-      {value === index && <Box sx={{ height: '100%', overflow: 'auto' }}>{children}</Box>}
-    </div>
-  );
-};
-
 const MainContent = () => {
   const dispatch = useDispatch();
   const { selectedId, selectedType } = useSelector((state) => state.users);
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState("history");
 
   useEffect(() => {
     if (selectedId && selectedType === 'user') {
@@ -32,20 +24,24 @@ const MainContent = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Tabs value={tab} onChange={(e, v) => setTab(v)}>
-        <Tab label="History & Details" />
-        <Tab label="Strategy Planning" />
+    <div className="h-full flex flex-col">
+      <Tabs defaultValue="history" className="h-full flex flex-col" value={tab} onValueChange={setTab}>
+        <div className="border-b px-4 py-2">
+          <TabsList>
+            <TabsTrigger value="history">History & Details</TabsTrigger>
+            <TabsTrigger value="strategy">Strategy Planning</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <TabsContent value="history" className="h-full m-0 p-0 overflow-auto">
+            <HistoryDetails />
+          </TabsContent>
+          <TabsContent value="strategy" className="h-full m-0 p-0 overflow-auto">
+            <StrategyPlanning />
+          </TabsContent>
+        </div>
       </Tabs>
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <TabPanel value={tab} index={0}>
-          <HistoryDetails />
-        </TabPanel>
-        <TabPanel value={tab} index={1}>
-          <StrategyPlanning />
-        </TabPanel>
-      </Box>
-    </Box>
+    </div>
   );
 };
 

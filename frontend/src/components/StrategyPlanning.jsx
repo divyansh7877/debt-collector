@@ -2,19 +2,29 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Alert,
-  Box,
-  Button,
-  Divider,
-  Drawer,
-  FormControl,
-  IconButton,
-  InputLabel,
-  MenuItem,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import {
   Select,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 import BlockCard from './BlockCard.jsx';
@@ -27,18 +37,27 @@ import {
 } from '../features/strategies/strategiesSlice.js';
 import { fetchUsers, fetchAnalytics } from '../features/users/usersSlice.js';
 import { getUser, aiGenerateBlockContent } from '../api/services.js';
-import { Delete } from '@mui/icons-material';
+import { Trash2, AlertTriangle, Plus } from 'lucide-react';
 
 const DEFAULT_COLUMNS = ['Day 1-7', 'Day 8-14', 'Day 15-30', 'Day 31-50', 'Day 51-90', 'Day 90+'];
 
 // Colors gradient from green to red as urgency increases
 const COLUMN_COLORS = [
-  'rgba(76, 175, 80, 0.15)',   // Green - Day 1-7
-  'rgba(139, 195, 74, 0.15)',  // Light Green - Day 8-14
-  'rgba(255, 235, 59, 0.15)',  // Yellow - Day 15-30
-  'rgba(255, 152, 0, 0.15)',   // Orange - Day 31-50
-  'rgba(255, 87, 34, 0.15)',   // Deep Orange - Day 51-90
-  'rgba(244, 67, 54, 0.15)',   // Red - Day 90+
+  'bg-green-50/50',   // Green - Day 1-7
+  'bg-lime-50/50',  // Light Green - Day 8-14
+  'bg-yellow-50/50',  // Yellow - Day 15-30
+  'bg-orange-50/50',   // Orange - Day 31-50
+  'bg-red-50/50',   // Deep Orange - Day 51-90
+  'bg-rose-50/50',   // Red - Day 90+
+];
+
+const COLUMN_BORDERS = [
+  'border-green-200',
+  'border-lime-200',
+  'border-yellow-200',
+  'border-orange-200',
+  'border-red-200',
+  'border-rose-200',
 ];
 
 const normalizeTimeline = (timeline = []) =>
@@ -130,7 +149,7 @@ const StrategyPlanning = () => {
 
   if (!selectedId || selectedType !== 'user') {
     return (
-      <Typography>Select a user to plan strategy.</Typography>
+      <div className="p-4 text-muted-foreground">Select a user to plan strategy.</div>
     );
   }
 
@@ -189,7 +208,7 @@ const StrategyPlanning = () => {
           tone: 'friendly',
           content: 'New reminder',
         };
-        
+
         // Auto-populate preferred contact method detail if available
         if (userDetails?.contact_methods && Array.isArray(userDetails.contact_methods)) {
           const preferredMethod = userDetails.contact_methods.find((cm) => cm.is_preferred);
@@ -203,12 +222,12 @@ const StrategyPlanning = () => {
             }
           }
         }
-        
+
         // Set preferred contact type
         if (userDetails?.preferred_contact) {
           newBlock.preferred_contact = userDetails.preferred_contact;
         }
-        
+
         newTimeline[colIndex].blocks.push(newBlock);
       }
       newBlockIndex = newTimeline[colIndex].blocks.length - 1;
@@ -390,89 +409,59 @@ const StrategyPlanning = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', flexDirection: 'column' }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1}
-        sx={{ mb: 2, alignItems: { xs: 'stretch', sm: 'center' } }}
-      >
-        <Button variant="outlined" onClick={openPromptDialog}>
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4 items-stretch sm:items-center">
+        <Button variant="outline" onClick={openPromptDialog}>
           AI Generate
         </Button>
-        <Button variant="contained" onClick={handleSave}>
+        <Button onClick={handleSave}>
           Save Strategy
         </Button>
-        <Button variant="contained" color="success" onClick={handleExecute}>
+        <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleExecute}>
           Execute
         </Button>
-        <Button variant="text" onClick={handleResetChanges} disabled={!hasUnsavedChanges}>
+        <Button variant="ghost" onClick={handleResetChanges} disabled={!hasUnsavedChanges}>
           Reset Changes
         </Button>
-        <Typography
-          variant="caption"
-          color={hasUnsavedChanges ? 'warning.main' : 'text.secondary'}
-        >
+        <span className={`text-xs ${hasUnsavedChanges ? 'text-yellow-600 font-medium' : 'text-muted-foreground'}`}>
           {hasUnsavedChanges ? 'Unsaved changes' : 'All changes saved'}
-        </Typography>
-      </Stack>
+        </span>
+      </div>
       {validationError && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {validationError}
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Validation Error</AlertTitle>
+          <AlertDescription>{validationError}</AlertDescription>
         </Alert>
       )}
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 2, 
-          overflowX: 'auto', 
-          overflowY: 'hidden',
-          flex: 1,
-          minWidth: 0, // Allow flex item to shrink below content size
-          '&::-webkit-scrollbar': {
-            height: 8,
-          },
-          '&::-webkit-scrollbar-track': {
-            backgroundColor: 'rgba(0,0,0,0.05)',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(0,0,0,0.2)',
-            borderRadius: 4,
-          },
-        }}>
+        <div className="flex gap-4 overflow-x-auto overflow-y-hidden flex-1 min-w-0 pb-2">
           {timeline.map((col, colIndex) => (
             <Droppable droppableId={`col-${colIndex}`} key={colIndex}>
               {(provided) => (
-                <Box
+                <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  sx={{
-                    minWidth: 260,
-                    maxWidth: 320,
-                    width: 280,
-                    flexShrink: 0, // Prevent columns from shrinking
-                    backgroundColor: COLUMN_COLORS[colIndex] || COLUMN_COLORS[COLUMN_COLORS.length - 1],
-                    border: '1px solid',
-                    borderColor: colIndex < 2 ? 'success.light' : colIndex < 4 ? 'warning.light' : 'error.light',
-                    borderRadius: 2,
-                    p: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden', // Prevent content from overflowing the column
-                  }}
+                  className={`
+                    min-w-[280px] w-[280px] flex-shrink-0
+                    border rounded-lg p-2 flex flex-col overflow-hidden
+                    ${COLUMN_COLORS[colIndex] || COLUMN_COLORS[COLUMN_COLORS.length - 1]}
+                    ${COLUMN_BORDERS[colIndex] || COLUMN_BORDERS[COLUMN_BORDERS.length - 1]}
+                  `}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2">{col.timing}</Typography>
-                    <Stack direction="row" spacing={0.5}>
-                      <Button size="small" onClick={() => handleAddBlock(colIndex, 'action')}>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-semibold">{col.timing}</h4>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => handleAddBlock(colIndex, 'action')}>
                         + Action
                       </Button>
-                      <Button size="small" color="secondary" onClick={() => handleAddBlock(colIndex, 'decision')}>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={() => handleAddBlock(colIndex, 'decision')}>
                         + Decision
                       </Button>
-                    </Stack>
-                  </Box>
-                  <Box sx={{ flex: 1, minHeight: 50, overflowY: 'auto', overflowX: 'hidden' }}>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-[50px] overflow-y-auto overflow-x-hidden space-y-2">
                     {col.blocks.map((block, index) => (
                       <Draggable
                         key={`${colIndex}-${index}`}
@@ -480,7 +469,7 @@ const StrategyPlanning = () => {
                         index={index}
                       >
                         {(dragProvided) => (
-                          <Box
+                          <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
                             {...dragProvided.dragHandleProps}
@@ -496,279 +485,279 @@ const StrategyPlanning = () => {
                                 onClick={() => handleBlockClick(colIndex, index)}
                               />
                             )}
-                          </Box>
+                          </div>
                         )}
                       </Draggable>
                     ))}
                     {col.blocks.length === 0 && (
-                      <Box
-                        sx={{
-                          border: '1px dashed',
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                          p: 1,
-                          textAlign: 'center',
-                          color: 'text.secondary',
-                          fontSize: 12,
-                        }}
-                      >
+                      <div className="border border-dashed border-muted-foreground/30 rounded p-4 text-center text-xs text-muted-foreground">
                         Drop actions or add a new one to get started.
-                      </Box>
+                      </div>
                     )}
                     {provided.placeholder}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
             </Droppable>
           ))}
-        </Box>
+        </div>
       </DragDropContext>
 
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 400, p: 2 } }}
-      >
-        {selectedBlock ? (
-          <Box>
-            {timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].block_type === 'decision' ? (
-              // Decision Block Editor
-              <Box>
-                <Typography variant="subtitle1" gutterBottom>
-                  Edit Decision Block
-                </Typography>
-                <TextField
-                  label="Decision Prompt"
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  value={
-                    timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                      .decision_prompt || ''
-                  }
-                  onChange={(e) => handleBlockChange('decision_prompt', e.target.value)}
-                  helperText="Describe the decision logic or condition to evaluate"
-                />
-                <TextField
-                  label="Data Sources (comma-separated)"
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  value={
-                    (timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                      .decision_sources || []).join(', ')
-                  }
-                  onChange={(e) =>
-                    handleBlockChange(
-                      'decision_sources',
-                      e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-                    )
-                  }
-                  helperText="e.g., payment_history, communication_log"
-                />
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Outputs/Conditions:
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-                  Define possible outcomes based on the decision
-                </Typography>
-                <Stack spacing={2}>
-                  {(timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].decision_outputs ||
-                    []).map((output, idx) => (
-                    <Box
-                      key={idx}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        p: 1,
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
-                          Outcome {idx + 1}
-                        </Typography>
-                        <IconButton color="error" size="small" onClick={() => handleRemoveDecisionOutput(idx)}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                      <TextField
-                        label="Condition"
-                        fullWidth
-                        sx={{ mt: 1 }}
-                        value={output?.condition || ''}
-                        onChange={(e) => handleDecisionOutputChange(idx, 'condition', e.target.value)}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedBlock && timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].block_type === 'decision'
+                ? 'Edit Decision Block'
+                : 'Edit Action Block'}
+            </SheetTitle>
+            <SheetDescription>
+              Configure the details for this step in the strategy.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-6">
+            {selectedBlock ? (
+              <div className="space-y-6">
+                {timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].block_type === 'decision' ? (
+                  // Decision Block Editor
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Decision Prompt</Label>
+                      <Textarea
+                        placeholder="Describe the decision logic or condition to evaluate"
+                        value={
+                          timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .decision_prompt || ''
+                        }
+                        onChange={(e) => handleBlockChange('decision_prompt', e.target.value)}
+                        className="min-h-[100px]"
                       />
-                      <FormControl fullWidth sx={{ mt: 1 }}>
-                        <InputLabel>Next Timing</InputLabel>
-                        <Select
-                          label="Next Timing"
-                          value={output?.next_timing || ''}
-                          onChange={(e) => handleDecisionOutputChange(idx, 'next_timing', e.target.value)}
-                        >
-                          {timeline.map((col) => (
-                            <MenuItem key={col.timing} value={col.timing}>
-                              {col.timing}
-                            </MenuItem>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data Sources (comma-separated)</Label>
+                      <Input
+                        placeholder="e.g., payment_history, communication_log"
+                        value={
+                          (timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .decision_sources || []).join(', ')
+                        }
+                        onChange={(e) =>
+                          handleBlockChange(
+                            'decision_sources',
+                            e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                          )
+                        }
+                      />
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <Label>Outputs/Conditions</Label>
+                      <p className="text-xs text-muted-foreground">Define possible outcomes based on the decision</p>
+
+                      <div className="space-y-3">
+                        {(timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex].decision_outputs ||
+                          []).map((output, idx) => (
+                            <div key={idx} className="border rounded-md p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Outcome {idx + 1}</span>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => handleRemoveDecisionOutput(idx)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs">Condition</Label>
+                                <Input
+                                  value={output?.condition || ''}
+                                  onChange={(e) => handleDecisionOutputChange(idx, 'condition', e.target.value)}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs">Next Timing</Label>
+                                <Select
+                                  value={output?.next_timing || ''}
+                                  onValueChange={(value) => handleDecisionOutputChange(idx, 'next_timing', value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Select timing" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {timeline.map((col) => (
+                                      <SelectItem key={col.timing} value={col.timing}>
+                                        {col.timing}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs">Action (Optional)</Label>
+                                <Input
+                                  value={output?.action || ''}
+                                  onChange={(e) => handleDecisionOutputChange(idx, 'action', e.target.value)}
+                                  className="h-8"
+                                  placeholder="Describe action"
+                                />
+                              </div>
+                            </div>
                           ))}
-                        </Select>
-                      </FormControl>
-                      <TextField
-                        label="Action"
-                        fullWidth
-                        sx={{ mt: 1 }}
-                        value={output?.action || ''}
-                        onChange={(e) => handleDecisionOutputChange(idx, 'action', e.target.value)}
-                        helperText="Optional: describe the action once this path is taken"
+                        <Button variant="outline" size="sm" className="w-full" onClick={handleAddDecisionOutput}>
+                          <Plus className="mr-2 h-4 w-4" /> Add Outcome
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Action Block Editor
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Source</Label>
+                      <Select
+                        value={
+                          timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .source || ''
+                        }
+                        onValueChange={(value) => handleBlockChange('source', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="sms">SMS</SelectItem>
+                          <SelectItem value="call">Call</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tone</Label>
+                      <Select
+                        value={
+                          timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .tone || ''
+                        }
+                        onValueChange={(value) => handleBlockChange('tone', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select tone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="friendly">Friendly</SelectItem>
+                          <SelectItem value="neutral">Neutral</SelectItem>
+                          <SelectItem value="firm">Firm</SelectItem>
+                          <SelectItem value="escalation">Escalation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Content</Label>
+                      <Textarea
+                        value={
+                          timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .content || ''
+                        }
+                        onChange={(e) => handleBlockChange('content', e.target.value)}
+                        className="min-h-[100px]"
                       />
-                    </Box>
-                  ))}
-                  <Button variant="outlined" onClick={handleAddDecisionOutput}>
-                    + Add Outcome
-                  </Button>
-                </Stack>
-              </Box>
-            ) : (
-              // Action Block Editor
-              <Box>
-                <Typography variant="subtitle1" gutterBottom>
-                  Edit Action Block
-                </Typography>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Source</InputLabel>
-                  <Select
-                    label="Source"
-                    value={
-                      timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                        .source || ''
-                    }
-                    onChange={(e) => handleBlockChange('source', e.target.value)}
-                  >
-                    <MenuItem value="email">Email</MenuItem>
-                    <MenuItem value="sms">SMS</MenuItem>
-                    <MenuItem value="call">Call</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Tone</InputLabel>
-                  <Select
-                    label="Tone"
-                    value={
-                      timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                        .tone || ''
-                    }
-                    onChange={(e) => handleBlockChange('tone', e.target.value)}
-                  >
-                    <MenuItem value="friendly">Friendly</MenuItem>
-                    <MenuItem value="neutral">Neutral</MenuItem>
-                    <MenuItem value="firm">Firm</MenuItem>
-                    <MenuItem value="escalation">Escalation</MenuItem>
-                  </Select>
-                </FormControl>
-                <TextField
-                  label="Content"
-                  multiline
-                  minRows={3}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  value={
-                    timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                      .content || ''
-                  }
-                  onChange={(e) => handleBlockChange('content', e.target.value)}
-                />
-                <Box
-                  sx={{
-                    mb: 2,
-                    p: 1,
-                    borderRadius: 1,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    AI assist (optional)
-                  </Typography>
-                  <TextField
-                    label="Describe what you want the message to say"
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    sx={{ mb: 1 }}
-                    value={blockAIPrompt}
-                    onChange={(e) => setBlockAIPrompt(e.target.value)}
-                    placeholder="e.g. Emphasize a friendly reminder with a flexible payment plan"
-                  />
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={handleGenerateBlockContent}
-                      disabled={blockAIGenerating}
-                    >
-                      {blockAIGenerating ? 'Generating…' : 'Generate with AI'}
-                    </Button>
-                    {blockAIError && (
-                      <Typography variant="caption" color="error">
-                        {blockAIError}
-                      </Typography>
+                    </div>
+
+                    <div className="border border-dashed rounded-md p-3 space-y-3 bg-muted/50">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">AI Assist (Optional)</Label>
+                        <p className="text-xs text-muted-foreground">Type your own content above or use AI to generate a starting point.</p>
+                      </div>
+                      <Textarea
+                        placeholder="e.g. Emphasize a friendly reminder with a flexible payment plan"
+                        value={blockAIPrompt}
+                        onChange={(e) => setBlockAIPrompt(e.target.value)}
+                        className="min-h-[60px] text-sm"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleGenerateBlockContent}
+                          disabled={blockAIGenerating}
+                        >
+                          {blockAIGenerating ? 'Generating...' : 'Generate with AI'}
+                        </Button>
+                        {blockAIError && (
+                          <span className="text-xs text-destructive">{blockAIError}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {userDetails?.contact_methods && Array.isArray(userDetails.contact_methods) && userDetails.contact_methods.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Contact Method</Label>
+                        <Select
+                          value={
+                            timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                              .contact_method_detail || ''
+                          }
+                          onValueChange={(value) => handleBlockChange('contact_method_detail', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select contact method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {userDetails.contact_methods.map((cm, idx) => (
+                              <SelectItem key={idx} value={cm.value}>
+                                {cm.label || `${cm.method.charAt(0).toUpperCase() + cm.method.slice(1)} ${idx + 1}`}: {cm.value} {cm.is_preferred ? '⭐' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     )}
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                    You can type your own content above or use AI to generate a starting point and edit it.
-                  </Typography>
-                </Box>
-                {userDetails?.contact_methods && Array.isArray(userDetails.contact_methods) && userDetails.contact_methods.length > 0 && (
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Contact Method</InputLabel>
-                    <Select
-                      label="Contact Method"
-                      value={
-                        timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                          .contact_method_detail || ''
-                      }
-                      onChange={(e) => handleBlockChange('contact_method_detail', e.target.value)}
-                    >
-                      {userDetails.contact_methods.map((cm, idx) => (
-                        <MenuItem key={idx} value={cm.value}>
-                          {cm.label || `${cm.method.charAt(0).toUpperCase() + cm.method.slice(1)} ${idx + 1}`}: {cm.value} {cm.is_preferred ? '⭐ (Preferred)' : ''}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+
+                    <div className="space-y-2">
+                      <Label>Preferred Contact Type</Label>
+                      <Select
+                        value={
+                          timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
+                            .preferred_contact || userDetails?.preferred_contact || ''
+                        }
+                        onValueChange={(value) => handleBlockChange('preferred_contact', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select preferred type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="sms">SMS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {userDetails?.preferred_contact && (
+                        <p className="text-xs text-muted-foreground">
+                          User's preferred: {userDetails.preferred_contact}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 )}
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Preferred Contact Type</InputLabel>
-                  <Select
-                    label="Preferred Contact Type"
-                    value={
-                      timeline[selectedBlock.colIndex].blocks[selectedBlock.blockIndex]
-                        .preferred_contact || userDetails?.preferred_contact || ''
-                    }
-                    onChange={(e) => handleBlockChange('preferred_contact', e.target.value)}
-                  >
-                    <MenuItem value="email">Email</MenuItem>
-                    <MenuItem value="phone">Phone</MenuItem>
-                    <MenuItem value="sms">SMS</MenuItem>
-                  </Select>
-                  {userDetails?.preferred_contact && (
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      User's preferred: {userDetails.preferred_contact}
-                    </Typography>
-                  )}
-                </FormControl>
-              </Box>
+
+                <Separator />
+
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleRemoveBlock}
+                  disabled={!selectedBlock}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Block
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">Select a block to edit</div>
             )}
-            <Divider sx={{ my: 2 }} />
-            <Button color="error" onClick={handleRemoveBlock} startIcon={<Delete />} disabled={!selectedBlock}>
-              Delete Block
-            </Button>
-          </Box>
-        ) : (
-          <Typography>Select a block to edit</Typography>
-        )}
-      </Drawer>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <PromptDialog
         open={promptOpen}
@@ -776,7 +765,7 @@ const StrategyPlanning = () => {
         onClose={() => setPromptOpen(false)}
         onSubmit={handlePromptSubmit}
       />
-    </Box>
+    </div>
   );
 };
 

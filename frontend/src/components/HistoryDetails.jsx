@@ -2,39 +2,47 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Box,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
   Card,
   CardContent,
-  Chip,
-  Grid,
-  LinearProgress,
-  Paper,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
+  TableHeader,
   TableRow,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-} from '@mui/material';
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import {
-  ExpandMore as ExpandMoreIcon,
-  AttachMoney,
-  CalendarToday,
-  AccountBalance,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DollarSign,
+  Calendar,
+  Landmark,
   CheckCircle,
-  Warning,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-} from '@mui/icons-material';
+  AlertTriangle,
+  Trash2,
+  Plus,
+} from 'lucide-react';
 import { updateStatus } from '../features/users/usersSlice.js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -101,16 +109,16 @@ const HistoryDetails = () => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return 'warning';
+        return 'secondary';
       case 'ongoing':
-        return 'info';
-      case 'finished':
-        return 'success';
-      default:
         return 'default';
+      case 'finished':
+        return 'success'; // Need custom class for success
+      default:
+        return 'outline';
     }
   };
 
@@ -189,18 +197,16 @@ const HistoryDetails = () => {
 
   if (loading) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Loading user details...</Typography>
-        <LinearProgress />
-      </Box>
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-8 w-[200px]" />
+        <Skeleton className="h-[200px] w-full" />
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="text.secondary">No data available</Typography>
-      </Box>
+      <div className="p-6 text-muted-foreground">No data available</div>
     );
   }
 
@@ -208,15 +214,15 @@ const HistoryDetails = () => {
   if (!data.type || !data.data) {
     console.error('Invalid data structure:', data);
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error">Invalid data structure received</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+      <div className="p-6 space-y-2">
+        <div className="text-destructive font-medium">Invalid data structure received</div>
+        <div className="text-sm text-muted-foreground">
           Expected: {'{type, data, group?, members?}'}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Received: {JSON.stringify(data, null, 2)}
-        </Typography>
-      </Box>
+        </div>
+        <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
     );
   }
 
@@ -224,9 +230,7 @@ const HistoryDetails = () => {
 
   if (!entity) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error">Entity data is missing</Typography>
-      </Box>
+      <div className="p-6 text-destructive">Entity data is missing</div>
     );
   }
 
@@ -244,192 +248,156 @@ const HistoryDetails = () => {
   const collectionProgress = amountOwed > 0 ? (totalPaid / amountOwed) * 100 : 0;
 
   return (
-    <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+    <div className="p-6 h-full overflow-auto space-y-6">
       {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="h4">{entity.name}</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Chip
-              label={entity.status || 'pending'}
-              color={getStatusColor(entity.status)}
-              size="medium"
-            />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">{entity.name}</h2>
+          <div className="flex items-center gap-2">
+            <Badge variant={getStatusVariant(entity.status)} className="capitalize">
+              {entity.status || 'pending'}
+            </Badge>
             <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<AddIcon />}
+              size="sm"
               onClick={() => setOpenPaymentDialog(true)}
             >
-              Add Payment
+              <Plus className="mr-2 h-4 w-4" /> Add Payment
             </Button>
             <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              startIcon={<DeleteIcon />}
+              variant="destructive"
+              size="sm"
               onClick={() => {
                 if (window.confirm('Are you sure you want to archive this user?')) {
                   dispatch(updateStatus({ id: entity.id, status: 'archived' }));
                 }
               }}
             >
-              Delete
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
-          </Box>
-        </Box>
-        <Typography variant="body2" color="text.secondary">
+          </div>
+        </div>
+        <p className="text-muted-foreground">
           {type === 'user' ? 'User Details' : 'Group Details'} • ID: {entity.id}
-        </Typography>
-      </Box>
+        </p>
+      </div>
 
       {/* Financial Overview Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AccountBalance color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(amountOwed)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Amount Owed
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Amount Owed
+            </CardTitle>
+            <Landmark className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(amountOwed)}</div>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <CheckCircle color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(totalPaid)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Paid
-              </Typography>
-              <Typography variant="caption" color="success.main">
-                {collectionProgress.toFixed(1)}% collected
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Paid
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalPaid)}</div>
+            <p className="text-xs text-muted-foreground">
+              {collectionProgress.toFixed(1)}% collected
+            </p>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AttachMoney color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(remainingAmount)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Remaining Amount
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Remaining Amount
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(remainingAmount)}</div>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                {isOverdue(dueDate) ? (
-                  <Warning color="error" sx={{ mr: 1 }} />
-                ) : (
-                  <CalendarToday color="info" sx={{ mr: 1 }} />
-                )}
-                <Typography variant="h6">
-                  {dueDate ? formatDate(dueDate) : 'N/A'}
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Due Date
-              </Typography>
-              {overdueDays !== null && overdueDays > 0 && (
-                <Typography variant="caption" color="error.main">
-                  {overdueDays} day{overdueDays !== 1 ? 's' : ''} overdue
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Due Date
+            </CardTitle>
+            {isOverdue(dueDate) ? (
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            ) : (
+              <Calendar className="h-4 w-4 text-blue-500" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dueDate ? formatDate(dueDate) : 'N/A'}</div>
+            {overdueDays !== null && overdueDays > 0 && (
+              <p className="text-xs text-destructive font-medium">
+                {overdueDays} day{overdueDays !== 1 ? 's' : ''} overdue
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Collection Progress */}
       {amountOwed > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Collection Progress
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Box sx={{ width: '100%', mr: 1 }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={Math.min(collectionProgress, 100)}
-                  sx={{ height: 10, borderRadius: 5 }}
-                  color={collectionProgress >= 100 ? 'success' : 'primary'}
-                />
-              </Box>
-              <Typography variant="body2" sx={{ minWidth: 60 }}>
-                {collectionProgress.toFixed(1)}%
-              </Typography>
-            </Box>
-            <Typography variant="caption" color="text.secondary">
+        <Card>
+          <CardHeader>
+            <CardTitle>Collection Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex items-center gap-4">
+              <Progress value={Math.min(collectionProgress, 100)} className="h-2" />
+              <span className="text-sm font-medium w-12 text-right">{collectionProgress.toFixed(1)}%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
               {formatCurrency(totalPaid)} of {formatCurrency(amountOwed)} collected
-            </Typography>
+            </p>
           </CardContent>
         </Card>
       )}
 
       {/* Service Information */}
       {service && (
-        <Card sx={{ mb: 3 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Information</CardTitle>
+          </CardHeader>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Service Information
-            </Typography>
-            <Typography variant="body1">{service}</Typography>
+            <p>{service}</p>
           </CardContent>
         </Card>
       )}
 
       {/* Payment History */}
       {paymentHistory.length > 0 && (
-        <Accordion defaultExpanded sx={{ mb: 2 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <Typography variant="h6">Payment History</Typography>
-              <Chip
-                label={`${paymentHistory.length} payment${paymentHistory.length !== 1 ? 's' : ''}`}
-                size="small"
-                sx={{ ml: 2 }}
-              />
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={3}>
-              {/* Payment Timeline Chart */}
-              {timelineData.length > 0 && (
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Payment Timeline
-                  </Typography>
-                  <Box sx={{ width: '100%', height: 450, minWidth: 800 }}>
+        <Accordion type="single" collapsible defaultValue="payment-history">
+          <AccordionItem value="payment-history">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <span>Payment History</span>
+                <Badge variant="secondary">{paymentHistory.length} payment{paymentHistory.length !== 1 ? 's' : ''}</Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-6 pt-4">
+                {/* Payment Timeline Chart */}
+                {timelineData.length > 0 && (
+                  <div className="h-[300px] w-full">
+                    <h4 className="text-sm font-medium mb-4">Payment Timeline</h4>
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={timelineData} margin={{ top: 5, right: 50, left: 20, bottom: 80 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <LineChart data={timelineData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis
                           dataKey="timestamp"
                           type="number"
                           scale="time"
                           domain={['dataMin', 'dataMax']}
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 12 }}
                           tickFormatter={(timestamp) => {
                             const date = new Date(timestamp);
                             return date.toLocaleDateString('en-US', {
@@ -437,8 +405,12 @@ const HistoryDetails = () => {
                               day: 'numeric'
                             });
                           }}
+                          className="text-xs"
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <YAxis
+                          tickFormatter={(value) => `$${value}`}
+                          className="text-xs"
+                        />
                         <Tooltip
                           formatter={(value) => formatCurrency(value)}
                           labelFormatter={(timestamp) => {
@@ -450,7 +422,6 @@ const HistoryDetails = () => {
                               day: 'numeric'
                             });
                           }}
-                          labelStyle={{ fontSize: 12 }}
                         />
                         <Line
                           type="monotone"
@@ -458,25 +429,24 @@ const HistoryDetails = () => {
                           stroke="#4CAF50"
                           strokeWidth={2}
                           name="Cumulative Amount"
+                          dot={false}
                         />
                       </LineChart>
                     </ResponsiveContainer>
-                  </Box>
-                </Grid>
-              )}
+                  </div>
+                )}
 
-              {/* Payment Table */}
-              <Grid item xs={12}>
-                <TableContainer component={Paper} variant="outlined">
+                {/* Payment Table */}
+                <div className="rounded-md border">
                   <Table>
-                    <TableHead>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell>Installment</TableCell>
-                        <TableCell>Date</TableCell>
-                        <TableCell align="right">Amount</TableCell>
-                        <TableCell>Status</TableCell>
+                        <TableHead>Installment</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    </TableHead>
+                    </TableHeader>
                     <TableBody>
                       {paymentHistory
                         .sort((a, b) => {
@@ -487,290 +457,278 @@ const HistoryDetails = () => {
                         .map((payment, idx) => (
                           <TableRow key={idx}>
                             <TableCell>
-                              <Chip
-                                label={`#${payment.installment_number || idx + 1}`}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
+                              <Badge variant="outline">
+                                #{payment.installment_number || idx + 1}
+                              </Badge>
                             </TableCell>
                             <TableCell>{formatDate(payment.date)}</TableCell>
-                            <TableCell align="right">
-                              <Typography variant="body2" fontWeight="bold">
-                                {formatCurrency(payment.amount)}
-                              </Typography>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(payment.amount)}
                             </TableCell>
                             <TableCell>
-                              <Chip
-                                label="Paid"
-                                size="small"
-                                color="success"
-                                icon={<CheckCircle />}
-                              />
+                              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+                                <CheckCircle className="mr-1 h-3 w-3" /> Paid
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))}
                     </TableBody>
                   </Table>
-                </TableContainer>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       )}
 
       {/* Communication Preferences */}
       {Object.keys(communicationPrefs).length > 0 && (
-        <Accordion sx={{ mb: 2 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">Communication Preferences</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Table size="small">
-              <TableBody>
-                {Object.entries(communicationPrefs).map(([key, value]) => (
-                  <TableRow key={key}>
-                    <TableCell sx={{ fontWeight: 500, textTransform: 'capitalize' }}>
-                      {key.replace(/_/g, ' ')}
-                    </TableCell>
-                    <TableCell>{String(value)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </AccordionDetails>
+        <Accordion type="single" collapsible>
+          <AccordionItem value="comm-prefs">
+            <AccordionTrigger>Communication Preferences</AccordionTrigger>
+            <AccordionContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableBody>
+                    {Object.entries(communicationPrefs).map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell className="font-medium capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </TableCell>
+                        <TableCell>{String(value)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       )}
 
       {/* Additional Details */}
-      <Accordion sx={{ mb: 2 }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="h6">Additional Details</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Table size="small">
-            <TableBody>
-              {Object.entries(details)
-                .filter(
-                  ([key]) =>
-                    ![
-                      'history_text',
-                      'payment_history',
-                      'amount_owed',
-                      'total_paid',
-                      'remaining_amount',
-                      'due_date',
-                      'service',
-                      'communication_preferences',
-                    ].includes(key),
-                )
-                .map(([key, value]) => (
-                  <TableRow key={key}>
-                    <TableCell sx={{ fontWeight: 500, textTransform: 'capitalize' }}>
-                      {key.replace(/_/g, ' ')}
-                    </TableCell>
-                    <TableCell>
-                      {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {Object.entries(details).filter(
-                ([key]) =>
-                  ![
-                    'history_text',
-                    'payment_history',
-                    'amount_owed',
-                    'total_paid',
-                    'remaining_amount',
-                    'due_date',
-                    'service',
-                    'communication_preferences',
-                  ].includes(key),
-              ).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        No additional details available
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-            </TableBody>
-          </Table>
-        </AccordionDetails>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="additional-details">
+          <AccordionTrigger>Additional Details</AccordionTrigger>
+          <AccordionContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableBody>
+                  {Object.entries(details)
+                    .filter(
+                      ([key]) =>
+                        ![
+                          'history_text',
+                          'payment_history',
+                          'amount_owed',
+                          'total_paid',
+                          'remaining_amount',
+                          'due_date',
+                          'service',
+                          'communication_preferences',
+                        ].includes(key),
+                    )
+                    .map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell className="font-medium capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </TableCell>
+                        <TableCell>
+                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
 
       {/* History Text */}
       {historyText && (
-        <Accordion sx={{ mb: 2 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">History & Notes</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Box sx={{ whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto' }}>
-              {historyText}
-            </Box>
-          </AccordionDetails>
+        <Accordion type="single" collapsible>
+          <AccordionItem value="history-text">
+            <AccordionTrigger>History & Notes</AccordionTrigger>
+            <AccordionContent>
+              <div className="bg-muted p-4 rounded-md whitespace-pre-wrap max-h-[400px] overflow-auto text-sm">
+                {historyText}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       )}
 
       {/* Documents Section */}
-      <Accordion sx={{ mb: 2 }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
-            <Typography variant="h6">Documents</Typography>
-            <Button
-              variant="contained"
-              size="small"
-              component="label"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Upload File
-              <input
-                type="file"
-                hidden
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
+      <Accordion type="single" collapsible>
+        <AccordionItem value="documents">
+          <AccordionTrigger>
+            <div className="flex items-center justify-between w-full pr-4">
+              <span>Documents</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="relative"
+                >
+                  Upload File
+                  <input
+                    type="file"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
 
-                  const formData = new FormData();
-                  formData.append('file', file);
+                      const formData = new FormData();
+                      formData.append('file', file);
 
-                  try {
-                    const response = await fetch(`http://localhost:8000/users/${entity.id}/documents`, {
-                      method: 'POST',
-                      body: formData,
-                    });
+                      try {
+                        const response = await fetch(`http://localhost:8000/users/${entity.id}/documents`, {
+                          method: 'POST',
+                          body: formData,
+                        });
 
-                    if (response.ok) {
-                      // Refresh data
-                      const res = await getUser(selectedId);
-                      if (res && res.data) {
-                        setData(res.data);
+                        if (response.ok) {
+                          // Refresh data
+                          const res = await getUser(selectedId);
+                          if (res && res.data) {
+                            setData(res.data);
+                          }
+                        } else {
+                          console.error('Upload failed');
+                        }
+                      } catch (error) {
+                        console.error('Error uploading file:', error);
                       }
-                    } else {
-                      console.error('Upload failed');
-                    }
-                  } catch (error) {
-                    console.error('Error uploading file:', error);
-                  }
-                }}
-              />
-            </Button>
-          </Box>
-        </AccordionSummary>
-        <AccordionDetails>
-          {entity.documents && entity.documents.length > 0 ? (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Filename</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Uploaded At</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {entity.documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>{doc.filename}</TableCell>
-                    <TableCell>{doc.file_type || 'N/A'}</TableCell>
-                    <TableCell>{new Date(doc.uploaded_at).toLocaleString()}</TableCell>
-                    <TableCell align="right">
-                      <Button size="small" variant="outlined">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <Typography variant="body2" color="text.secondary" align="center">
-              No documents uploaded yet.
-            </Typography>
-          )}
-        </AccordionDetails>
+                    }}
+                  />
+                </Button>
+              </div>
+              {entity.documents && entity.documents.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Filename</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Uploaded At</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {entity.documents.map((doc) => (
+                        <TableRow key={doc.id}>
+                          <TableCell>{doc.filename}</TableCell>
+                          <TableCell>{doc.file_type || 'N/A'}</TableCell>
+                          <TableCell>{new Date(doc.uploaded_at).toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" variant="outline">
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground text-sm py-4">
+                  No documents uploaded yet.
+                </p>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
 
       {/* Group Information */}
       {type === 'user' && group && (
-        <Card sx={{ mt: 2 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Group Membership</CardTitle>
+          </CardHeader>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Group Membership
-            </Typography>
-            <Chip label={group.name} color="primary" />
+            <Badge>{group.name}</Badge>
           </CardContent>
         </Card>
       )}
 
       {type === 'group' && members && members.length > 0 && (
-        <Card sx={{ mt: 2 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Group Members ({members.length})</CardTitle>
+          </CardHeader>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Group Members ({members.length})
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <div className="flex flex-wrap gap-2">
               {members.map((m) => (
-                <Chip key={m.id} label={m.name} variant="outlined" />
+                <Badge key={m.id} variant="outline">{m.name}</Badge>
               ))}
-            </Box>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)}>
-        <DialogTitle>Add Payment</DialogTitle>
+      <Dialog open={openPaymentDialog} onOpenChange={setOpenPaymentDialog}>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: 300 }}>
-            <TextField
-              label="Amount"
-              type="number"
-              fullWidth
-              value={paymentForm.amount}
-              onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-              }}
-            />
-            <TextField
-              label="Date"
-              type="date"
-              fullWidth
-              value={paymentForm.date}
-              onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Installment Number (Optional)"
-              type="number"
-              fullWidth
-              value={paymentForm.installment_number}
-              onChange={(e) => setPaymentForm({ ...paymentForm, installment_number: e.target.value })}
-            />
-            <TextField
-              label="Notes (Optional)"
-              multiline
-              rows={2}
-              fullWidth
-              value={paymentForm.notes}
-              onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-            />
-          </Box>
+          <DialogHeader>
+            <DialogTitle>Add Payment</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  className="pl-6"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={paymentForm.date}
+                onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="installment">Installment Number (Optional)</Label>
+              <Input
+                id="installment"
+                type="number"
+                value={paymentForm.installment_number}
+                onChange={(e) => setPaymentForm({ ...paymentForm, installment_number: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenPaymentDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleAddPayment}
+              disabled={!paymentForm.amount || !paymentForm.date}
+            >
+              Add Payment
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPaymentDialog(false)}>Cancel</Button>
-          <Button
-            onClick={handleAddPayment}
-            variant="contained"
-            disabled={!paymentForm.amount || !paymentForm.date}
-          >
-            Add Payment
-          </Button>
-        </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 };
 

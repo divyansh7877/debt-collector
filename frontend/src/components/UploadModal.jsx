@@ -2,19 +2,19 @@ import React, { useCallback, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import {
-  Alert,
-  Button,
   Dialog,
-  DialogActions,
   DialogContent,
+  DialogHeader,
   DialogTitle,
-  Divider,
-  Stack,
-  TextField,
-  Typography,
-  Box,
-} from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { CloudUpload, CheckCircle, AlertCircle } from 'lucide-react';
 
 import { uploadFile, addUserManual } from '../api/services.js';
 import { fetchUsers, fetchAnalytics } from '../features/users/usersSlice.js';
@@ -39,7 +39,7 @@ const UploadModal = ({ open, onClose }) => {
         const response = await uploadFile(file);
         dispatch(fetchUsers());
         dispatch(fetchAnalytics());
-        
+
         // Handle CSV response (may have multiple users)
         if (response.data?.users && Array.isArray(response.data.users)) {
           const count = response.data.users.length;
@@ -47,7 +47,7 @@ const UploadModal = ({ open, onClose }) => {
         } else {
           setSuccess('File uploaded successfully');
         }
-        
+
         // Reset form after a delay
         setTimeout(() => {
           setManualName('');
@@ -113,108 +113,125 @@ const UploadModal = ({ open, onClose }) => {
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
-      <DialogTitle>
-        <Typography variant="h6">Add Users</Typography>
-        <Typography variant="caption" color="text.secondary">
-          Upload CSV/Excel file or add user manually
-        </Typography>
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          {success && <Alert severity="success">{success}</Alert>}
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add Users</DialogTitle>
+          <DialogDescription>
+            Upload CSV/Excel file or add user manually
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-6 py-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert className="border-green-500 text-green-600">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
 
           {/* File Upload Section */}
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Upload CSV/Excel File
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+            </h3>
+            <p className="text-xs text-muted-foreground">
               CSV format: Username, Service, Bill, DueDate, Installment1, Installment1Date, ...
-            </Typography>
-            <Box
+            </p>
+            <div
               {...getRootProps()}
-              sx={{
-                border: '2px dashed',
-                borderColor: isDragActive ? 'primary.main' : 'divider',
-                borderRadius: 2,
-                p: 4,
-                textAlign: 'center',
-                cursor: 'pointer',
-                bgcolor: isDragActive ? 'action.hover' : 'background.paper',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  bgcolor: 'action.hover',
-                },
-              }}
+              className={`
+                border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary hover:bg-primary/5'}
+              `}
             >
               <input {...getInputProps()} />
-              <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+              <CloudUpload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
               {isDragActive ? (
-                <Typography color="primary">Drop the file here...</Typography>
+                <p className="text-primary font-medium">Drop the file here...</p>
               ) : (
-                <Box>
-                  <Typography variant="body1" gutterBottom>
+                <div>
+                  <p className="font-medium mb-1">
                     Drag and drop CSV/Excel/PDF file here
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  </p>
+                  <p className="text-xs text-muted-foreground">
                     or click to browse
-                  </Typography>
-                </Box>
+                  </p>
+                </div>
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
 
-          <Divider>OR</Divider>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                OR
+              </span>
+            </div>
+          </div>
 
           {/* Manual Entry Section */}
-          <Box>
-            <Typography variant="subtitle1" gutterBottom>
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium leading-none">
               Add User Manually
-            </Typography>
-            <Stack spacing={2}>
-              <TextField
-                label="Name"
-                fullWidth
-                required
-                value={manualName}
-                onChange={(e) => setManualName(e.target.value)}
-                disabled={loading}
-              />
-              <TextField
-                label="Amount Owed"
-                fullWidth
-                type="number"
-                value={manualAmount}
-                onChange={(e) => setManualAmount(e.target.value)}
-                disabled={loading}
-              />
-              <TextField
-                label="Due Date (YYYY-MM-DD)"
-                fullWidth
-                placeholder="2025-06-12"
-                value={manualDueDate}
-                onChange={(e) => setManualDueDate(e.target.value)}
-                disabled={loading}
-              />
-            </Stack>
-          </Box>
-        </Stack>
+            </h3>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="name"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  disabled={loading}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="amount">Amount Owed</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={manualAmount}
+                  onChange={(e) => setManualAmount(e.target.value)}
+                  disabled={loading}
+                  placeholder="1000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="dueDate">Due Date (YYYY-MM-DD)</Label>
+                <Input
+                  id="dueDate"
+                  value={manualDueDate}
+                  onChange={(e) => setManualDueDate(e.target.value)}
+                  disabled={loading}
+                  placeholder="2025-06-12"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleManualSubmit}
+            disabled={!manualName || loading}
+          >
+            {loading ? 'Adding...' : 'Add User'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleManualSubmit}
-          disabled={!manualName || loading}
-          variant="contained"
-        >
-          {loading ? 'Adding...' : 'Add User'}
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 };

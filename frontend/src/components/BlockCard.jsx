@@ -1,17 +1,18 @@
 import React from 'react';
-import { Card, CardContent, Chip, Stack, Typography, Box } from '@mui/material';
-import { Email, Phone, Sms, Star } from '@mui/icons-material';
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Mail, Phone, MessageSquare, Star } from 'lucide-react';
 
 const BlockCard = ({ block, onClick }) => {
   const getSourceIcon = (source) => {
     switch (source?.toLowerCase()) {
       case 'email':
-        return <Email fontSize="small" />;
+        return <Mail className="h-3 w-3" />;
       case 'phone':
       case 'call':
-        return <Phone fontSize="small" />;
+        return <Phone className="h-3 w-3" />;
       case 'sms':
-        return <Sms fontSize="small" />;
+        return <MessageSquare className="h-3 w-3" />;
       default:
         return null;
     }
@@ -19,48 +20,32 @@ const BlockCard = ({ block, onClick }) => {
 
   return (
     <Card
-      variant="outlined"
-      sx={{ mb: 1, cursor: 'pointer' }}
+      className="mb-2 cursor-pointer hover:shadow-md transition-shadow"
       onClick={onClick}
     >
-      <CardContent sx={{ p: 1.5 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-          <Chip
-            size="small"
-            icon={getSourceIcon(block.source)}
-            label={block.source}
-          />
-          <Chip size="small" label={block.tone} color="primary" />
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Badge variant="secondary" className="gap-1">
+            {getSourceIcon(block.source)}
+            {block.source}
+          </Badge>
+          <Badge>{block.tone}</Badge>
           {block.preferred_contact && (
-            <Chip
-              size="small"
-              icon={<Star />}
-              label="Preferred"
-              color="warning"
-              variant="outlined"
-            />
+            <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-600">
+              <Star className="h-3 w-3" />
+              Preferred
+            </Badge>
           )}
-        </Stack>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+        </div>
+        <p className="text-sm line-clamp-3 break-words">
           {block.content}
-        </Typography>
+        </p>
         {block.contact_method_detail && (
-          <Box sx={{ mt: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
+          <div className="mt-2">
+            <p className="text-xs text-muted-foreground">
               Via: {block.contact_method_detail}
-            </Typography>
-          </Box>
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

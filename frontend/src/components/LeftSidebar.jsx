@@ -1,15 +1,12 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import {
   Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Box,
-  List,
-  Typography,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 import AnalyticsCard from './AnalyticsCard.jsx';
 import UserListItem from './UserListItem.jsx';
@@ -46,57 +43,56 @@ const LeftSidebar = ({ search }) => {
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 1 }}>
+    <div className="h-full flex flex-col p-2 space-y-2 overflow-y-auto">
       <AnalyticsCard />
       <DragDropContext onDragEnd={onDragEnd}>
-        {STATUSES.map((status) => (
-          <Accordion key={status} defaultExpanded sx={{ mb: 1 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography sx={{ textTransform: 'capitalize' }}>{status}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Droppable droppableId={status}>
-                {(provided) => (
-                  <List
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    dense
-                    sx={{ minHeight: 40 }}
-                  >
-                    {usersByStatus[status].map((u, index) => (
-                      <Draggable
-                        key={u.id}
-                        draggableId={`user-${u.id}`}
-                        index={index}
-                      >
-                        {(dragProvided) => (
-                          <Box
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
-                          >
-                            <UserListItem
-                              entity={u}
-                              selected={selectedId === u.id && selectedType === 'user'}
-                              onClick={() =>
-                                dispatch(
-                                  selectEntity({ id: u.id, type: 'user' }),
-                                )
-                              }
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </List>
-                )}
-              </Droppable>
-            </AccordionDetails>
-          </Accordion>
-        ))}
+        <Accordion type="multiple" defaultValue={STATUSES} className="w-full">
+          {STATUSES.map((status) => (
+            <AccordionItem value={status} key={status}>
+              <AccordionTrigger className="capitalize">{status}</AccordionTrigger>
+              <AccordionContent>
+                <Droppable droppableId={status}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className="min-h-[40px] space-y-1"
+                    >
+                      {usersByStatus[status].map((u, index) => (
+                        <Draggable
+                          key={u.id}
+                          draggableId={`user-${u.id}`}
+                          index={index}
+                        >
+                          {(dragProvided) => (
+                            <div
+                              ref={dragProvided.innerRef}
+                              {...dragProvided.draggableProps}
+                              {...dragProvided.dragHandleProps}
+                            >
+                              <UserListItem
+                                entity={u}
+                                selected={selectedId === u.id && selectedType === 'user'}
+                                onClick={() =>
+                                  dispatch(
+                                    selectEntity({ id: u.id, type: 'user' }),
+                                  )
+                                }
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </DragDropContext>
-    </Box>
+    </div>
   );
 };
 

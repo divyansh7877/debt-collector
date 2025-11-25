@@ -1,7 +1,8 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Skeleton } from "@/components/ui/skeleton"
 
 const COLORS = ['#4CAF50', '#FFC107', '#F44336'];
 
@@ -10,9 +11,9 @@ const AnalyticsCard = () => {
 
   if (!analytics) {
     return (
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle2">Loading analytics...</Typography>
+      <Card className="mb-4">
+        <CardContent className="p-6">
+          <Skeleton className="h-[200px] w-full" />
         </CardContent>
       </Card>
     );
@@ -26,24 +27,33 @@ const AnalyticsCard = () => {
   ];
 
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
+      </CardHeader>
       <CardContent>
-        <Typography variant="subtitle2" gutterBottom>
-          Status Overview
-        </Typography>
-        <Box sx={{ width: '100%', height: 200 }}>
+        <div className="w-full h-[200px]">
           <ResponsiveContainer>
             <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" outerRadius={60}>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={60}
+                cx="50%"
+                cy="50%"
+              >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
-        </Box>
+        </div>
       </CardContent>
     </Card>
   );

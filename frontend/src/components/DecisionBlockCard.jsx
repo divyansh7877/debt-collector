@@ -1,55 +1,34 @@
 import React from 'react';
-import { Card, CardContent, Chip, Stack, Typography, Box } from '@mui/material';
-import { AccountTree, Psychology } from '@mui/icons-material';
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { GitBranch, BrainCircuit } from 'lucide-react';
 
 const DecisionBlockCard = ({ block, onClick }) => {
   return (
     <Card
-      variant="outlined"
-      sx={{
-        mb: 1,
-        cursor: 'pointer',
-        background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%)',
-        borderColor: 'secondary.main',
-        borderWidth: 2,
-      }}
+      className="mb-2 cursor-pointer hover:shadow-md transition-shadow border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50"
       onClick={onClick}
     >
-      <CardContent sx={{ p: 1.5 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-          <Psychology color="secondary" fontSize="small" />
-          <Chip size="small" label="AI Decision" color="secondary" />
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <BrainCircuit className="h-4 w-4 text-purple-600" />
+          <Badge variant="secondary" className="bg-purple-100 text-purple-800 hover:bg-purple-200">AI Decision</Badge>
           {block.decision_sources && block.decision_sources.length > 0 && (
-            <Chip
-              size="small"
-              icon={<AccountTree />}
-              label={`${block.decision_sources.length} sources`}
-              variant="outlined"
-            />
+            <Badge variant="outline" className="gap-1 border-purple-200">
+              <GitBranch className="h-3 w-3" />
+              {block.decision_sources.length} sources
+            </Badge>
           )}
-        </Stack>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontStyle: 'italic', 
-            mb: 0.5,
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+        </div>
+        <p className="text-sm italic mb-2 line-clamp-3 break-words">
           {block.decision_prompt || 'Decision point'}
-        </Typography>
+        </p>
         {block.decision_outputs && block.decision_outputs.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="caption" color="text.secondary">
+          <div className="mt-2">
+            <p className="text-xs text-muted-foreground">
               {block.decision_outputs.length} possible outcome{block.decision_outputs.length > 1 ? 's' : ''}
-            </Typography>
-          </Box>
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

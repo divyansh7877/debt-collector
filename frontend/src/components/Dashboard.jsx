@@ -1,21 +1,21 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import {
-  Box,
   Card,
   CardContent,
-  Grid,
-  Typography,
-  LinearProgress,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
+  TableHeader,
   TableRow,
-  Paper,
-  Chip,
-} from '@mui/material';
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   PieChart,
   Pie,
@@ -30,12 +30,12 @@ import {
   CartesianGrid,
 } from 'recharts';
 import {
-  People,
-  AttachMoney,
+  Users,
+  DollarSign,
   CheckCircle,
-  Schedule,
+  Clock,
   TrendingUp,
-} from '@mui/icons-material';
+} from 'lucide-react';
 
 const COLORS = ['#4CAF50', '#FFC107', '#F44336'];
 
@@ -45,10 +45,18 @@ const Dashboard = () => {
 
   if (!analytics) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Loading analytics...</Typography>
-        <LinearProgress />
-      </Box>
+      <div className="p-6 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-[200px]" />
+          <Skeleton className="h-4 w-[300px]" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+          <Skeleton className="h-[120px]" />
+        </div>
+      </div>
     );
   }
 
@@ -97,257 +105,213 @@ const Dashboard = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Collections Dashboard
-      </Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-        Overview of all users, collections status, and payment timeline
-      </Typography>
+    <div className="p-6 space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Collections Dashboard</h2>
+        <p className="text-muted-foreground">
+          Overview of all users, collections status, and payment timeline
+        </p>
+      </div>
 
       {/* Key Metrics */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <People color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">{total_users}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Users
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Users
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{total_users}</div>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AttachMoney color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(total_amount_owed)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Amount Owed
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Amount Owed
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(total_amount_owed)}</div>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <CheckCircle color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(total_amount_collected)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Amount Collected
-              </Typography>
-              <Typography variant="caption" color="success.main">
-                {collectionRate}% collection rate
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Amount Collected
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(total_amount_collected)}</div>
+            <p className="text-xs text-muted-foreground">
+              {collectionRate}% collection rate
+            </p>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <TrendingUp color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6">{formatCurrency(total_remaining)}</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary">
-                Remaining Amount
-              </Typography>
-              {avg_overdue_days > 0 && (
-                <Typography variant="caption" color="warning.main">
-                  Avg {avg_overdue_days.toFixed(1)} days overdue
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Remaining Amount
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(total_remaining)}</div>
+            {avg_overdue_days > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Avg {avg_overdue_days.toFixed(1)} days overdue
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-      <Grid container spacing={3}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {/* Status Distribution */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Status Distribution
-              </Typography>
-              <Box sx={{ width: '100%', height: 500, minHeight: 500, minWidth: 600 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={180}
-                      label
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                {statusData.map((item) => (
-                  <Box key={item.name} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          bgcolor: item.color,
-                          borderRadius: '50%',
-                          mr: 1,
-                        }}
-                      />
-                      <Typography variant="body2">{item.name}</Typography>
-                    </Box>
-                    <Typography variant="body2" fontWeight="bold">
-                      {item.value}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Payment Timeline */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Payment Timeline
-              </Typography>
-              {timelineChartData.length > 0 ? (
-                <Box sx={{ width: '100%', height: 500, minHeight: 500, minWidth: 800 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={timelineChartData} margin={{ top: 5, right: 50, left: 20, bottom: 80 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="timestamp"
-                        type="number"
-                        scale="time"
-                        domain={['dataMin', 'dataMax']}
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(timestamp) => {
-                          const date = new Date(timestamp);
-                          return date.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          });
-                        }}
-                      />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip
-                        formatter={(value) => formatCurrency(value)}
-                        labelFormatter={(timestamp) => {
-                          const date = new Date(timestamp);
-                          return date.toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          });
-                        }}
-                        labelStyle={{ fontSize: 12 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="amount"
-                        stroke="#4CAF50"
-                        strokeWidth={2}
-                        name="Amount Collected"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No payment data available
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Payment Timeline</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            {timelineChartData.length > 0 ? (
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timelineChartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="timestamp"
+                      type="number"
+                      scale="time"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(timestamp) => {
+                        const date = new Date(timestamp);
+                        return date.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      }}
+                      className="text-xs"
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `$${value}`}
+                      className="text-xs"
+                    />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(value)}
+                      labelFormatter={(timestamp) => {
+                        const date = new Date(timestamp);
+                        return date.toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#4CAF50"
+                      strokeWidth={2}
+                      name="Amount Collected"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                No payment data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Recent Payments Table */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Payments
-              </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Date</TableCell>
-                      <TableCell>User</TableCell>
-                      <TableCell align="right">Amount</TableCell>
-                      <TableCell>Installment</TableCell>
+      {/* Recent Payments Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Payments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Installment</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {timeline_data && timeline_data.length > 0 ? (
+                timeline_data
+                  .slice(-10)
+                  .reverse()
+                  .map((payment, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{payment.date}</TableCell>
+                      <TableCell>{payment.user_name}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(payment.amount || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {payment.installment_number && (
+                          <Badge variant="outline">
+                            #{payment.installment_number}
+                          </Badge>
+                        )}
+                      </TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {timeline_data && timeline_data.length > 0 ? (
-                      timeline_data
-                        .slice(-10)
-                        .reverse()
-                        .map((payment, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{payment.date}</TableCell>
-                            <TableCell>{payment.user_name}</TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(payment.amount || 0)}
-                            </TableCell>
-                            <TableCell>
-                              {payment.installment_number && (
-                                <Chip
-                                  label={`#${payment.installment_number}`}
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} align="center">
-                          <Typography variant="body2" color="text.secondary">
-                            No payment history available
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+                  ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No payment history available
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

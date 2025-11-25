@@ -1,20 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Box, Grid, Typography } from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 import { fetchUsers, fetchAnalytics } from './features/users/usersSlice.js';
 import Header from './components/Header.jsx';
 import LeftSidebar from './components/LeftSidebar.jsx';
 import MainContent from './components/MainContent.jsx';
 import UploadModal from './components/UploadModal.jsx';
-
-const theme = createTheme({
-  palette: {
-    primary: { main: '#4CAF50' },
-    error: { main: '#F44336' },
-  },
-});
 
 const App = () => {
   const dispatch = useDispatch();
@@ -27,23 +18,21 @@ const App = () => {
   }, [dispatch]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <Header onOpenUpload={() => setUploadOpen(true)} search={search} onSearchChange={setSearch} />
-        <Grid container sx={{ flex: 1, overflow: 'hidden' }}>
-          <Grid item sx={{ width: 300, borderRight: 1, borderColor: 'divider', height: '100%' }}>
-            <LeftSidebar search={search} />
-          </Grid>
-          <Grid item xs sx={{ height: '100%', overflow: 'hidden' }}>
-            <MainContent />
-          </Grid>
-        </Grid>
-        <Box component="footer" sx={{ p: 1, textAlign: 'center', borderTop: 1, borderColor: 'divider' }}>
-          <Typography variant="caption">Collections App prototype</Typography>
-        </Box>
-        <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
-      </Box>
-    </ThemeProvider>
+    <div className="flex flex-col h-screen bg-background text-foreground">
+      <Header onOpenUpload={() => setUploadOpen(true)} search={search} onSearchChange={setSearch} />
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-[300px] border-r border-border h-full">
+          <LeftSidebar search={search} />
+        </div>
+        <div className="flex-1 h-full overflow-hidden">
+          <MainContent />
+        </div>
+      </div>
+      <footer className="p-1 text-center border-t border-border">
+        <span className="text-xs text-muted-foreground">Collections App prototype</span>
+      </footer>
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+    </div>
   );
 };
 
