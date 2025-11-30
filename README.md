@@ -3,7 +3,7 @@
 A full-stack application for managing debt collection strategies with AI-powered decision blocks and timeline-based planning. The system helps organizations create, manage, and execute collection strategies for users and groups.
 
 ![Serve Collections Demo](assets/serve_collections.gif)
-<img src="/images/output/video1.gif" width="512" height="512"/>
+<img src="/assets/serve_collections.gif" width="512" height="512"/>
 
 ## Features
 
